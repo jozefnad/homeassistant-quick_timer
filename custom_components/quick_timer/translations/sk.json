@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Quick Timer",
+        "description": "Táto integrácia umožňuje naplánovať jednorazové akcie pre ľubovoľnú entitu s odpočítavaním. Kliknite na odoslať pre inštaláciu."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Povolená je iba jedna inštancia Quick Timer."
+    }
+  },
+  "services": {
+    "run_action": {
+      "name": "Spustiť akciu",
+      "description": "Naplánujte jednorazovú akciu (zapnúť/vypnúť/prepnúť) pre ľubovoľnú entitu s odpočítavaním.",
+      "fields": {
+        "entity_id": {
+          "name": "Entita",
+          "description": "Entita, na ktorej sa má vykonať akcia."
+        },
+        "delay": {
+          "name": "Oneskorenie",
+          "description": "Oneskorenie v minútach pred vykonaním akcie."
+        },
+        "action": {
+          "name": "Akcia",
+          "description": "Akcia, ktorá sa má vykonať (zapnúť, vypnúť alebo prepnúť)."
+        },
+        "notify": {
+          "name": "Upozorniť",
+          "description": "Či sa majú odosielať upozornenia o naplánovanej akcii."
+        }
+      }
+    },
+    "cancel_action": {
+      "name": "Zrušiť akciu",
+      "description": "Zrušte naplánovanú akciu pre entitu.",
+      "fields": {
+        "entity_id": {
+          "name": "Entita",
+          "description": "Entita, pre ktorú sa má zrušiť naplánovaná akcia."
+        }
+      }
+    }
+  }
+}

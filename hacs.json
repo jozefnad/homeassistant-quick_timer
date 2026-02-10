@@ -1,0 +1,9 @@
+{
+  "name": "Quick Timer",
+  "domain": "quick_timer",
+  "homeassistant": "2026.2.1",
+  "render_readme": true,
+  "content_in_root": false,
+  "zip_release": false,
+  "filename": "quick-timer-card.js"
+}

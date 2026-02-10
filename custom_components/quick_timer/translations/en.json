@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Quick Timer",
+        "description": "This integration allows you to schedule one-time actions for any entity with a countdown timer. Click submit to install."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only a single instance of Quick Timer is allowed."
+    }
+  },
+  "services": {
+    "run_action": {
+      "name": "Run Action",
+      "description": "Schedule a one-time action (on/off/toggle) for any entity with a countdown.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The entity to perform the action on."
+        },
+        "delay": {
+          "name": "Delay",
+          "description": "The delay in minutes before the action is executed."
+        },
+        "action": {
+          "name": "Action",
+          "description": "The action to perform (on, off, or toggle)."
+        },
+        "notify": {
+          "name": "Notify",
+          "description": "Whether to send notifications about the scheduled action."
+        }
+      }
+    },
+    "cancel_action": {
+      "name": "Cancel Action",
+      "description": "Cancel a scheduled action for an entity.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The entity to cancel the scheduled action for."
+        }
+      }
+    }
+  }
+}

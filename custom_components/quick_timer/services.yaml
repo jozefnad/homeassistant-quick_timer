@@ -1,0 +1,88 @@
+run_action:
+  name: Run Action
+  description: Schedule a one-time action for any entity with a countdown timer.
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity to perform the action on.
+      required: true
+      example: "light.living_room"
+      selector:
+        entity:
+    delay:
+      name: Delay
+      description: The delay before the action is executed (1-86400 depending on unit).
+      required: true
+      example: 30
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 86400
+          mode: box
+    unit:
+      name: Time Unit
+      description: The unit of time for the delay (seconds, minutes, hours).
+      required: false
+      example: "minutes"
+      default: "minutes"
+      selector:
+        select:
+          options:
+            - label: "Seconds"
+              value: "seconds"
+            - label: "Minutes"
+              value: "minutes"
+            - label: "Hours"
+              value: "hours"
+    action:
+      name: Action
+      description: The action to perform on the entity.
+      required: true
+      example: "off"
+      default: "off"
+      selector:
+        select:
+          options:
+            - label: "Turn On"
+              value: "on"
+            - label: "Turn Off"
+              value: "off"
+            - label: "Toggle"
+              value: "toggle"
+    notify_ha:
+      name: HA Notification
+      description: Whether to send a persistent notification in Home Assistant when the action completes.
+      required: false
+      example: false
+      default: false
+      selector:
+        boolean:
+    notify_mobile:
+      name: Mobile Notification
+      description: Whether to send push notifications to mobile devices when the action completes.
+      required: false
+      example: false
+      default: false
+      selector:
+        boolean:
+    run_now:
+      name: Run Now
+      description: Execute the action immediately and schedule the reverse action after the delay.
+      required: false
+      example: false
+      default: false
+      selector:
+        boolean:
+
+cancel_action:
+  name: Cancel Action
+  description: Cancel a scheduled action for an entity.
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity to cancel the scheduled action for.
+      required: true
+      example: "light.living_room"
+      selector:
+        entity:
