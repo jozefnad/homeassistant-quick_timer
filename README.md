@@ -7,6 +7,10 @@
 
 **Quick Timer** is a custom integration for Home Assistant that allows you to schedule one-time actions (on/off/toggle) for any entity with a countdown timer.
 
+### Installing the Lovelace Card
+
+The Quick Timer Card is a separate component which you need to install. Install it from: [Quick Timer Card](https://github.com/jozefnad/homeassitant-quick_timer_card)
+
 ## ✨ Features
 
 - 🕐 **One-time scheduling** - Schedule an action to execute after a specified time
@@ -39,10 +43,6 @@
 1. Download the latest release from [Releases](https://github.com/jozefnad/homeassitant-quick_timer/releases)
 2. Extract and copy the `custom_components/quick_timer` folder to your `config/custom_components/`
 3. Restart Home Assistant
-
-### Installing the Lovelace Card
-
-The Quick Timer Card is a separate component. Install it from: [Quick Timer Card](https://github.com/jozefnad/homeassitant-quick_timer_card)
 
 ## ⚙️ Configuration
 
