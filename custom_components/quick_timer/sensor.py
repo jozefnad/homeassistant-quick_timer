@@ -38,6 +38,7 @@ class QuickTimerSensor(SensorEntity):
         self._coordinator = coordinator
         self._attr_unique_id = "quick_timer_monitor"
         self._active_tasks: dict[str, Any] = {}
+        self._preferences: dict[str, Any] = {}
 
     @property
     def native_value(self) -> int:
@@ -73,12 +74,19 @@ class QuickTimerSensor(SensorEntity):
             "active_tasks": tasks_with_remaining,
             "task_count": len(self._active_tasks),
             "scheduled_entities": list(self._active_tasks.keys()),
+            "preferences": self._preferences,
         }
 
     @callback
     def update_tasks(self, tasks: dict[str, Any]) -> None:
         """Update the active tasks."""
         self._active_tasks = tasks
+        self.async_write_ha_state()
+
+    @callback
+    def update_preferences(self, preferences: dict[str, Any]) -> None:
+        """Update the preferences."""
+        self._preferences = preferences
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
@@ -88,6 +96,7 @@ class QuickTimerSensor(SensorEntity):
         self._coordinator.register_sensor(self)
         # Initial update
         self._active_tasks = self._coordinator.get_all_tasks()
+        self._preferences = self._coordinator.get_all_preferences()
 
     async def async_will_remove_from_hass(self) -> None:
         """Run when entity is being removed."""

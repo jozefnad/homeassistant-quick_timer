@@ -1,7 +1,7 @@
 {
   "domain": "quick_timer",
   "name": "Quick Timer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "documentation": "https://github.com/jozefnad/homeassistant-quick_timer",
   "issue_tracker": "https://github.com/jozefnad/homeassistant-quick_timer/issues",
   "dependencies": [],

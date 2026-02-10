@@ -33,25 +33,32 @@ from .const import (
     ACTION_ON,
     ACTION_TOGGLE,
     ATTR_ACTION,
+    ATTR_AT_TIME,
     ATTR_DELAY,
     ATTR_ENTITY_ID,
     ATTR_NOTIFY,
     ATTR_NOTIFY_HA,
     ATTR_NOTIFY_MOBILE,
+    ATTR_PREFERENCES,
     ATTR_RUN_NOW,
+    ATTR_TIME_MODE,
     ATTR_UNIT,
     DOMAIN,
     EVENT_TASK_CANCELLED,
     EVENT_TASK_COMPLETED,
     EVENT_TASK_STARTED,
     SERVICE_CANCEL_ACTION,
+    SERVICE_GET_PREFERENCES,
     SERVICE_RUN_ACTION,
+    SERVICE_SET_PREFERENCES,
+    TIME_MODE_ABSOLUTE,
+    TIME_MODE_RELATIVE,
     UNIT_HOURS,
     UNIT_MINUTES,
     UNIT_SECONDS,
     VALID_ACTIONS,
 )
-from .store import QuickTimerStore
+from .store import QuickTimerStore, QuickTimerPreferencesStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +71,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 RUN_ACTION_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTITY_ID): cv.entity_id,
-        vol.Required(ATTR_DELAY): vol.All(
+        vol.Optional(ATTR_DELAY): vol.All(
             vol.Coerce(int), vol.Range(min=1, max=86400)
         ),
         vol.Optional(ATTR_UNIT, default=UNIT_MINUTES): vol.In([UNIT_SECONDS, UNIT_MINUTES, UNIT_HOURS]),
@@ -73,6 +80,8 @@ RUN_ACTION_SCHEMA = vol.Schema(
         vol.Optional(ATTR_RUN_NOW, default=False): cv.boolean,
         vol.Optional(ATTR_NOTIFY_HA, default=False): cv.boolean,
         vol.Optional(ATTR_NOTIFY_MOBILE, default=False): cv.boolean,
+        vol.Optional(ATTR_AT_TIME): cv.string,  # HH:MM format for absolute time
+        vol.Optional(ATTR_TIME_MODE, default=TIME_MODE_RELATIVE): vol.In([TIME_MODE_RELATIVE, TIME_MODE_ABSOLUTE]),
     }
 )
 
@@ -101,14 +110,28 @@ CANCEL_ACTION_SCHEMA = vol.Schema(
     }
 )
 
+GET_PREFERENCES_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_ENTITY_ID): cv.entity_id,
+    }
+)
+
+SET_PREFERENCES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+        vol.Required(ATTR_PREFERENCES): dict,
+    }
+)
+
 
 class QuickTimerCoordinator:
     """Coordinator for Quick Timer."""
 
-    def __init__(self, hass: HomeAssistant, store: QuickTimerStore) -> None:
+    def __init__(self, hass: HomeAssistant, store: QuickTimerStore, preferences_store: QuickTimerPreferencesStore) -> None:
         """Initialize the coordinator."""
         self.hass = hass
         self.store = store
+        self.preferences_store = preferences_store
         self._scheduled_tasks: dict[str, Any] = {}
         self._state_listeners: dict[str, Any] = {}
         self._sensor: Any = None
@@ -125,11 +148,21 @@ class QuickTimerCoordinator:
         """Get all scheduled tasks."""
         return self.store.get_all_tasks()
 
+    def get_all_preferences(self) -> dict[str, Any]:
+        """Get all preferences."""
+        return self.preferences_store.get_all_preferences()
+
     @callback
     def _update_sensor(self) -> None:
         """Update the sensor with current tasks."""
         if self._sensor is not None:
             self._sensor.update_tasks(self.store.get_all_tasks())
+
+    @callback
+    def _update_preferences_sensor(self) -> None:
+        """Update the sensor with current preferences."""
+        if self._sensor is not None:
+            self._sensor.update_preferences(self.preferences_store.get_all_preferences())
 
     async def async_schedule_action(
         self,
@@ -141,17 +174,39 @@ class QuickTimerCoordinator:
         run_now: bool = False,
         notify_ha: bool = False,
         notify_mobile: bool = False,
+        at_time: str | None = None,
+        time_mode: str = TIME_MODE_RELATIVE,
     ) -> None:
         """Schedule an action for an entity."""
         # Cancel any existing task for this entity
         await self.async_cancel_action(entity_id, silent=True)
 
-        # Convert delay to seconds
-        delay_seconds = convert_to_seconds(delay, unit)
-
-        # Calculate scheduled time
         now = dt_util.now()
-        scheduled_time = now + timedelta(seconds=delay_seconds)
+        
+        # Calculate scheduled time based on mode
+        if time_mode == TIME_MODE_ABSOLUTE and at_time:
+            # Parse absolute time (HH:MM format)
+            try:
+                hours, minutes = map(int, at_time.split(':'))
+                scheduled_time = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+                
+                # Handle crossing midnight - if the time is in the past, schedule for tomorrow
+                if scheduled_time <= now:
+                    scheduled_time = scheduled_time + timedelta(days=1)
+                    _LOGGER.info(
+                        "Scheduled time %s is in the past, scheduling for tomorrow",
+                        at_time,
+                    )
+                
+                delay_seconds = int((scheduled_time - now).total_seconds())
+            except (ValueError, AttributeError) as err:
+                _LOGGER.error("Invalid at_time format '%s': %s", at_time, err)
+                return
+        else:
+            # Relative time mode (original behavior)
+            delay_seconds = convert_to_seconds(delay, unit)
+            scheduled_time = now + timedelta(seconds=delay_seconds)
+
         scheduled_time_str = now.isoformat()
         end_time_str = scheduled_time.isoformat()
 
@@ -177,7 +232,40 @@ class QuickTimerCoordinator:
             notify_mobile=notify_mobile,
             run_now=run_now,
             original_action=original_action,
+            at_time=at_time,
+            time_mode=time_mode,
         )
+
+        # Add to history for persistence
+        history_entry = {
+            "action": action,
+            "time_mode": time_mode,
+            "timestamp": now.isoformat(),
+        }
+        if time_mode == TIME_MODE_ABSOLUTE:
+            history_entry["at_time"] = at_time
+        else:
+            history_entry["delay"] = delay
+            history_entry["unit"] = unit
+        
+        await self.preferences_store.async_add_to_history(entity_id, history_entry)
+        
+        # Save current preferences
+        await self.preferences_store.async_set_preferences(
+            entity_id,
+            {
+                "last_action": action,
+                "last_time_mode": time_mode,
+                "last_delay": delay,
+                "last_unit": unit,
+                "last_at_time": at_time,
+                "notify_ha": notify_ha,
+                "notify_mobile": notify_mobile,
+            }
+        )
+        
+        # Update preferences sensor
+        self._update_preferences_sensor()
 
         # Schedule the action
         cancel_callback = async_track_point_in_time(
@@ -216,7 +304,10 @@ class QuickTimerCoordinator:
 
         # Send notification if enabled
         if notify_ha or notify_mobile:
-            time_str = self._format_delay(delay, unit)
+            if time_mode == TIME_MODE_ABSOLUTE and at_time:
+                time_str = f"at {at_time}"
+            else:
+                time_str = self._format_delay(delay, unit)
             if run_now:
                 await self._send_notification(
                     f"Turned on: {entity_id}",
@@ -233,12 +324,13 @@ class QuickTimerCoordinator:
                 )
 
         _LOGGER.info(
-            "Scheduled %s for %s at %s (in %d seconds, run_now=%s)",
+            "Scheduled %s for %s at %s (in %d seconds, run_now=%s, time_mode=%s)",
             actual_action,
             entity_id,
             end_time_str,
             delay_seconds,
             run_now,
+            time_mode,
         )
 
     async def _execute_immediate_action(self, entity_id: str, action: str) -> None:
@@ -608,10 +700,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     store = QuickTimerStore(hass)
     await store.async_load()
     
+    # Initialize preferences storage
+    preferences_store = QuickTimerPreferencesStore(hass)
+    await preferences_store.async_load()
+    
     # Create coordinator
-    coordinator = QuickTimerCoordinator(hass, store)
+    coordinator = QuickTimerCoordinator(hass, store, preferences_store)
     hass.data[DOMAIN]["coordinator"] = coordinator
     hass.data[DOMAIN]["store"] = store
+    hass.data[DOMAIN]["preferences_store"] = preferences_store
     
     # Restore tasks from storage
     await coordinator.async_restore_tasks()
@@ -625,13 +722,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             return
 
         entity_id = call.data[ATTR_ENTITY_ID]
-        delay = call.data[ATTR_DELAY]
+        delay = call.data.get(ATTR_DELAY, 15)
         unit = call.data.get(ATTR_UNIT, UNIT_MINUTES)
         action = call.data[ATTR_ACTION]
         notify = call.data.get(ATTR_NOTIFY, False)
         run_now = call.data.get(ATTR_RUN_NOW, False)
         notify_ha = call.data.get(ATTR_NOTIFY_HA, False)
         notify_mobile = call.data.get(ATTR_NOTIFY_MOBILE, False)
+        at_time = call.data.get(ATTR_AT_TIME)
+        time_mode = call.data.get(ATTR_TIME_MODE, TIME_MODE_RELATIVE)
 
         await coord.async_schedule_action(
             entity_id=entity_id,
@@ -642,6 +741,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             run_now=run_now,
             notify_ha=notify_ha,
             notify_mobile=notify_mobile,
+            at_time=at_time,
+            time_mode=time_mode,
         )
 
     async def handle_cancel_action(call: ServiceCall) -> None:
@@ -653,6 +754,38 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             
         entity_id = call.data[ATTR_ENTITY_ID]
         await coord.async_cancel_action(entity_id)
+
+    async def handle_get_preferences(call: ServiceCall) -> dict:
+        """Handle the get_preferences service call."""
+        coord = hass.data[DOMAIN].get("coordinator")
+        if coord is None:
+            _LOGGER.error("Quick Timer coordinator not initialized")
+            return {}
+        
+        entity_id = call.data.get(ATTR_ENTITY_ID)
+        if entity_id:
+            return coord.preferences_store.get_preferences(entity_id)
+        else:
+            return coord.preferences_store.get_all_preferences()
+
+    async def handle_set_preferences(call: ServiceCall) -> None:
+        """Handle the set_preferences service call."""
+        coord = hass.data[DOMAIN].get("coordinator")
+        if coord is None:
+            _LOGGER.error("Quick Timer coordinator not initialized")
+            return
+        
+        entity_id = call.data[ATTR_ENTITY_ID]
+        preferences = call.data[ATTR_PREFERENCES]
+        _LOGGER.info("Setting preferences for %s: %s", entity_id, preferences)
+        
+        # Use coordinator's preferences_store to ensure consistency
+        await coord.preferences_store.async_set_preferences(entity_id, preferences)
+        _LOGGER.info("Preferences saved, updating sensor...")
+        
+        # Update sensor with new preferences
+        coord._update_preferences_sensor()
+        _LOGGER.info("Sensor updated with new preferences")
 
     # Only register if not already registered
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_ACTION):
@@ -670,6 +803,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             handle_cancel_action,
             schema=CANCEL_ACTION_SCHEMA,
         )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_GET_PREFERENCES):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_PREFERENCES,
+            handle_get_preferences,
+            schema=GET_PREFERENCES_SCHEMA,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_PREFERENCES):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_PREFERENCES,
+            handle_set_preferences,
+            schema=SET_PREFERENCES_SCHEMA,
+        )
     
     _LOGGER.info("Quick Timer services registered successfully")
     return True
@@ -685,9 +834,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if "store" not in hass.data[DOMAIN]:
         store = QuickTimerStore(hass)
         await store.async_load()
-        coordinator = QuickTimerCoordinator(hass, store)
+        preferences_store = QuickTimerPreferencesStore(hass)
+        await preferences_store.async_load()
+        coordinator = QuickTimerCoordinator(hass, store, preferences_store)
         hass.data[DOMAIN]["coordinator"] = coordinator
         hass.data[DOMAIN]["store"] = store
+        hass.data[DOMAIN]["preferences_store"] = preferences_store
         await coordinator.async_restore_tasks()
 
     # Set up platforms

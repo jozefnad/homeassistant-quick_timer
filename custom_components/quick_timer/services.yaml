@@ -11,8 +11,8 @@ run_action:
         entity:
     delay:
       name: Delay
-      description: The delay before the action is executed (1-86400 depending on unit).
-      required: true
+      description: The delay before the action is executed (1-86400 depending on unit). Required when using relative time mode.
+      required: false
       example: 30
       default: 15
       selector:
@@ -50,6 +50,26 @@ run_action:
               value: "off"
             - label: "Toggle"
               value: "toggle"
+    time_mode:
+      name: Time Mode
+      description: Whether to use relative delay or absolute time.
+      required: false
+      example: "relative"
+      default: "relative"
+      selector:
+        select:
+          options:
+            - label: "Relative (delay)"
+              value: "relative"
+            - label: "Absolute (specific time)"
+              value: "absolute"
+    at_time:
+      name: At Time
+      description: The specific time to execute the action (HH:MM format). Required when using absolute time mode. If the time is in the past, it will be scheduled for the next day.
+      required: false
+      example: "23:30"
+      selector:
+        time:
     notify_ha:
       name: HA Notification
       description: Whether to send a persistent notification in Home Assistant when the action completes.
@@ -86,3 +106,34 @@ cancel_action:
       example: "light.living_room"
       selector:
         entity:
+
+get_preferences:
+  name: Get Preferences
+  description: Get saved preferences and history for an entity or all entities.
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity to get preferences for. If omitted, returns all preferences.
+      required: false
+      example: "light.living_room"
+      selector:
+        entity:
+
+set_preferences:
+  name: Set Preferences
+  description: Set preferences for an entity.
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity to set preferences for.
+      required: true
+      example: "light.living_room"
+      selector:
+        entity:
+    preferences:
+      name: Preferences
+      description: The preferences object to store.
+      required: true
+      example: '{"last_action": "off", "last_delay": 15, "last_unit": "minutes"}'
+      selector:
+        object:

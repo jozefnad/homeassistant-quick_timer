@@ -2,11 +2,17 @@
 
 DOMAIN = "quick_timer"
 STORAGE_KEY = "quick_timer_tasks"
-STORAGE_VERSION = 2
+STORAGE_VERSION = 3  # Bumped for preferences support
+
+# Separate storage for user preferences (synced across devices)
+PREFERENCES_STORAGE_KEY = "quick_timer_preferences"
+PREFERENCES_STORAGE_VERSION = 1
 
 # Service names
 SERVICE_RUN_ACTION = "run_action"
 SERVICE_CANCEL_ACTION = "cancel_action"
+SERVICE_GET_PREFERENCES = "get_preferences"
+SERVICE_SET_PREFERENCES = "set_preferences"
 
 # Service fields
 ATTR_ENTITY_ID = "entity_id"
@@ -17,6 +23,13 @@ ATTR_NOTIFY = "notify"
 ATTR_RUN_NOW = "run_now"
 ATTR_NOTIFY_HA = "notify_ha"
 ATTR_NOTIFY_MOBILE = "notify_mobile"
+ATTR_AT_TIME = "at_time"  # Absolute time (HH:MM format)
+ATTR_TIME_MODE = "time_mode"  # 'relative' or 'absolute'
+ATTR_PREFERENCES = "preferences"
+
+# Time modes
+TIME_MODE_RELATIVE = "relative"
+TIME_MODE_ABSOLUTE = "absolute"
 
 # Time units
 UNIT_SECONDS = "seconds"
