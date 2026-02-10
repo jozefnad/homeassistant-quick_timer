@@ -2,14 +2,14 @@
 
 [![Add to Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=quick_timer)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/release/jozefnad/homeassitant-quick_timer.svg)](https://github.com/jozefnad/homeassitant-quick_timer/releases)
-[![License](https://img.shields.io/github/license/jozefnad/homeassitant-quick_timer.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/release/jozefnad/homeassistant-quick_timer.svg)](https://github.com/jozefnad/homeassistant-quick_timer/releases)
+[![License](https://img.shields.io/github/license/jozefnad/homeassistant-quick_timer.svg)](LICENSE)
 
 **Quick Timer** is a custom integration for Home Assistant that allows you to schedule one-time actions (on/off/toggle) for any entity with a countdown timer.
 
 ### Installing the Lovelace Card
 
-The Quick Timer Card is a separate component which you need to install. Install it from: [Quick Timer Card](https://github.com/jozefnad/homeassitant-quick_timer_card)
+The Quick Timer Card is a separate component which you need to install. Install it from: [Quick Timer Card](https://github.com/jozefnad/homeassistant-quick_timer_card)
 
 ## ✨ Features
 
@@ -32,7 +32,7 @@ The Quick Timer Card is a separate component which you need to install. Install 
 2. Click on **Integrations**
 3. Click the menu (⋮) in the top right corner
 4. Select **Custom repositories**
-5. Add URL: `https://github.com/jozefnad/homeassitant-quick_timer`
+5. Add URL: `https://github.com/jozefnad/homeassistant-quick_timer`
 6. Category: **Integration**
 7. Click **Add**
 8. Search for "Quick Timer" and click **Download**
@@ -40,7 +40,7 @@ The Quick Timer Card is a separate component which you need to install. Install 
 
 ### Manual Installation
 
-1. Download the latest release from [Releases](https://github.com/jozefnad/homeassitant-quick_timer/releases)
+1. Download the latest release from [Releases](https://github.com/jozefnad/homeassistant-quick_timer/releases)
 2. Extract and copy the `custom_components/quick_timer` folder to your `config/custom_components/`
 3. Restart Home Assistant
 
@@ -55,7 +55,7 @@ The Quick Timer Card is a separate component which you need to install. Install 
 
 ### Adding the Lovelace Card
 
-The Quick Timer Card is a separate Lovelace card. See the [Quick Timer Card repository](https://github.com/jozefnad/homeassitant-quick_timer_card) for installation and configuration instructions.
+The Quick Timer Card is a separate Lovelace card. See the [Quick Timer Card repository](https://github.com/jozefnad/homeassistant-quick_timer_card) for installation and configuration instructions.
 
 ### Overview Card
 
