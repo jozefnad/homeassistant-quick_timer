@@ -539,6 +539,30 @@ class QuickTimerCoordinator:
         # Update sensor
         self._update_sensor()
 
+    async def async_shutdown(self) -> None:
+        """Cancel all in-memory callbacks without removing tasks from storage.
+        
+        Used during HA shutdown/restart to stop callbacks while preserving
+        stored tasks for restoration after restart.
+        """
+        # Cancel all scheduled callbacks
+        for entity_id in list(self._scheduled_tasks.keys()):
+            try:
+                self._scheduled_tasks[entity_id]()
+            except Exception:  # noqa: BLE001
+                pass
+        self._scheduled_tasks.clear()
+
+        # Remove all state listeners
+        for entity_id in list(self._state_listeners.keys()):
+            try:
+                self._state_listeners[entity_id]()
+            except Exception:  # noqa: BLE001
+                pass
+        self._state_listeners.clear()
+
+        _LOGGER.info("Quick Timer shutdown: cancelled all in-memory callbacks, tasks preserved in storage")
+
     async def async_cancel_action(
         self, entity_id: str, silent: bool = False, reason: str = "user_request"
     ) -> bool:
@@ -666,7 +690,11 @@ class QuickTimerCoordinator:
                     end_time_str,
                 )
                 callback_fn = self._create_action_callback(
-                    entity_id, task["action"], task.get("notify", True)
+                    entity_id=entity_id,
+                    action=task["action"],
+                    notify=task.get("notify", False),
+                    notify_ha=task.get("notify_ha", False),
+                    notify_mobile=task.get("notify_mobile", False),
                 )
                 await callback_fn(now)
             else:
@@ -679,7 +707,11 @@ class QuickTimerCoordinator:
                 cancel_callback = async_track_point_in_time(
                     self.hass,
                     self._create_action_callback(
-                        entity_id, task["action"], task.get("notify", True)
+                        entity_id=entity_id,
+                        action=task["action"],
+                        notify=task.get("notify", False),
+                        notify_ha=task.get("notify_ha", False),
+                        notify_mobile=task.get("notify_mobile", False),
                     ),
                     scheduled_time,
                 )
@@ -854,11 +886,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        # Cancel all scheduled tasks
+        # Shutdown coordinator: cancel in-memory callbacks but preserve tasks in storage
+        # so they can be restored after HA restart
         coordinator = hass.data[DOMAIN].get("coordinator")
         if coordinator:
-            for entity_id in list(coordinator._scheduled_tasks.keys()):
-                await coordinator.async_cancel_action(entity_id, silent=True)
+            await coordinator.async_shutdown()
 
         # Note: We don't remove services here as they are registered in async_setup
         # and should remain available
