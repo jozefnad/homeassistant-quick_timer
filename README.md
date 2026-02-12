@@ -5,6 +5,10 @@
 [![GitHub Release](https://img.shields.io/github/release/jozefnad/homeassistant-quick_timer.svg)](https://github.com/jozefnad/homeassistant-quick_timer/releases)
 [![License](https://img.shields.io/github/license/jozefnad/homeassistant-quick_timer.svg)](LICENSE)
 
+If you find this integration useful, you can buy me a beer to help keep development going.
+
+[![Buy me a beer](https://img.shields.io/badge/Donate-Buy%20me%20a%20beer-yellow?style=for-the-badge&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/jozefnad)
+
 **Quick Timer** is a custom integration for Home Assistant that allows you to schedule one-time actions (on/off/toggle) for any entity with a countdown timer.
 
 ### Installing the Lovelace Card
