@@ -10,36 +10,109 @@
       "single_instance_allowed": "Povolená je iba jedna inštancia Quick Timer."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Nastavenia Quick Timer",
+        "description": "Nakonfigurujte časové presety zobrazené v karte timera. Zadajte hodnoty oddelené čiarkou.",
+        "data": {
+          "preset_seconds": "Presety sekúnd",
+          "preset_minutes": "Presety minút",
+          "preset_hours": "Presety hodín"
+        }
+      }
+    }
+  },
   "services": {
     "run_action": {
       "name": "Spustiť akciu",
-      "description": "Naplánujte jednorazovú akciu (zapnúť/vypnúť/prepnúť) pre ľubovoľnú entitu s odpočítavaním.",
+      "description": "Naplánujte jednorazovú akciu s odpočítavaním.",
       "fields": {
+        "task_id": {
+          "name": "ID úlohy",
+          "description": "Jedinečný identifikátor pre túto úlohu timera."
+        },
         "entity_id": {
           "name": "Entita",
-          "description": "Entita, na ktorej sa má vykonať akcia."
+          "description": "Entita, na ktorej sa má vykonať akcia (legacy)."
+        },
+        "task_label": {
+          "name": "Označenie úlohy",
+          "description": "Čitateľné označenie pre túto úlohu timera."
+        },
+        "finish_actions": {
+          "name": "Konečné akcie",
+          "description": "Zoznam akcií na vykonanie po skončení timera."
+        },
+        "start_actions": {
+          "name": "Štartovacie akcie",
+          "description": "Zoznam akcií na okamžité vykonanie pri spustení timera."
         },
         "delay": {
           "name": "Oneskorenie",
-          "description": "Oneskorenie v minútach pred vykonaním akcie."
+          "description": "Oneskorenie pred vykonaním akcie."
         },
-        "action": {
-          "name": "Akcia",
-          "description": "Akcia, ktorá sa má vykonať (zapnúť, vypnúť alebo prepnúť)."
+        "unit": {
+          "name": "Jednotka",
+          "description": "Časová jednotka oneskorenia (sekundy, minúty, hodiny)."
         },
-        "notify": {
-          "name": "Upozorniť",
-          "description": "Či sa majú odosielať upozornenia o naplánovanej akcii."
+        "time_mode": {
+          "name": "Časový režim",
+          "description": "Či použiť relatívne oneskorenie alebo absolútny čas."
+        },
+        "at_time": {
+          "name": "V čase",
+          "description": "Absolútny čas vo formáte HH:MM (keď je časový režim absolútny)."
+        },
+        "notify_ha": {
+          "name": "HA upozornenie",
+          "description": "Odoslať trvalé HA upozornenie."
+        },
+        "notify_mobile": {
+          "name": "Mobilné upozornenie",
+          "description": "Odoslať mobilné push upozornenie na všetky zariadenia."
+        },
+        "notify_devices": {
+          "name": "Upozorniť zariadenia",
+          "description": "Konkrétne mobilné zariadenia, na ktoré sa majú odoslať push upozornenia."
         }
       }
     },
     "cancel_action": {
       "name": "Zrušiť akciu",
-      "description": "Zrušte naplánovanú akciu pre entitu.",
+      "description": "Zrušte naplánovanú úlohu timera.",
+      "fields": {
+        "task_id": {
+          "name": "ID úlohy",
+          "description": "ID úlohy na zrušenie."
+        },
+        "entity_id": {
+          "name": "Entita",
+          "description": "Entita, pre ktorú sa má zrušiť naplánovaná akcia (legacy)."
+        }
+      }
+    },
+    "get_preferences": {
+      "name": "Získať predvoľby",
+      "description": "Získať uložené predvoľby pre entitu.",
       "fields": {
         "entity_id": {
           "name": "Entita",
-          "description": "Entita, pre ktorú sa má zrušiť naplánovaná akcia."
+          "description": "Entita, pre ktorú sa majú získať predvoľby."
+        }
+      }
+    },
+    "set_preferences": {
+      "name": "Nastaviť predvoľby",
+      "description": "Uložiť predvoľby pre entitu.",
+      "fields": {
+        "entity_id": {
+          "name": "Entita",
+          "description": "Entita, pre ktorú sa majú nastaviť predvoľby."
+        },
+        "preferences": {
+          "name": "Predvoľby",
+          "description": "Údaje predvolieb na uloženie."
         }
       }
     }

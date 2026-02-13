@@ -2,7 +2,7 @@
 
 DOMAIN = "quick_timer"
 STORAGE_KEY = "quick_timer_tasks"
-STORAGE_VERSION = 3  # Bumped for preferences support
+STORAGE_VERSION = 4  # Bumped for task_id-based storage and action arrays
 
 # Separate storage for user preferences (synced across devices)
 PREFERENCES_STORAGE_KEY = "quick_timer_preferences"
@@ -15,17 +15,26 @@ SERVICE_GET_PREFERENCES = "get_preferences"
 SERVICE_SET_PREFERENCES = "set_preferences"
 
 # Service fields
-ATTR_ENTITY_ID = "entity_id"
+ATTR_TASK_ID = "task_id"  # Unique identifier for card instance
+ATTR_ENTITY_ID = "entity_id"  # Legacy support
 ATTR_DELAY = "delay"
 ATTR_UNIT = "unit"
-ATTR_ACTION = "action"
 ATTR_NOTIFY = "notify"
-ATTR_RUN_NOW = "run_now"
 ATTR_NOTIFY_HA = "notify_ha"
 ATTR_NOTIFY_MOBILE = "notify_mobile"
+ATTR_NOTIFY_DEVICES = "notify_devices"
 ATTR_AT_TIME = "at_time"  # Absolute time (HH:MM format)
 ATTR_TIME_MODE = "time_mode"  # 'relative' or 'absolute'
 ATTR_PREFERENCES = "preferences"
+ATTR_START_ACTIONS = "start_actions"  # List of actions to execute on start (optional)
+ATTR_FINISH_ACTIONS = "finish_actions"  # List of actions to execute on finish (required)
+ATTR_TASK_LABEL = "task_label"  # Human-readable label for the task (for overview)
+
+# Legacy attributes for backward compatibility
+ATTR_ACTION = "action"
+ATTR_RUN_NOW = "run_now"
+ATTR_SERVICE = "service"
+ATTR_SERVICE_DATA = "service_data"
 
 # Time modes
 TIME_MODE_RELATIVE = "relative"
@@ -35,39 +44,6 @@ TIME_MODE_ABSOLUTE = "absolute"
 UNIT_SECONDS = "seconds"
 UNIT_MINUTES = "minutes"
 UNIT_HOURS = "hours"
-
-# Actions - basic
-ACTION_ON = "on"
-ACTION_OFF = "off"
-ACTION_TOGGLE = "toggle"
-ACTION_TURN_OFF = "turn_off"
-
-# Actions - cover
-ACTION_OPEN_COVER = "open_cover"
-ACTION_CLOSE_COVER = "close_cover"
-ACTION_STOP_COVER = "stop_cover"
-
-# Actions - media_player
-ACTION_MEDIA_PLAY = "media_play"
-ACTION_MEDIA_STOP = "media_stop"
-
-# Actions - vacuum
-ACTION_START = "start"
-ACTION_RETURN_TO_BASE = "return_to_base"
-
-# Actions - climate
-ACTION_SET_HVAC_MODE_HEAT = "set_hvac_mode_heat"
-ACTION_SET_HVAC_MODE_COOL = "set_hvac_mode_cool"
-ACTION_SET_HVAC_MODE_AUTO = "set_hvac_mode_auto"
-
-# All valid actions
-VALID_ACTIONS = [
-    ACTION_ON, ACTION_OFF, ACTION_TOGGLE, ACTION_TURN_OFF,
-    ACTION_OPEN_COVER, ACTION_CLOSE_COVER, ACTION_STOP_COVER,
-    ACTION_MEDIA_PLAY, ACTION_MEDIA_STOP,
-    ACTION_START, ACTION_RETURN_TO_BASE,
-    ACTION_SET_HVAC_MODE_HEAT, ACTION_SET_HVAC_MODE_COOL, ACTION_SET_HVAC_MODE_AUTO,
-]
 
 # Sensor
 SENSOR_NAME = "Quick Timer Monitor"

@@ -12,8 +12,6 @@ from homeassistant.const import (
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
-    STATE_OFF,
-    STATE_ON,
 )
 from homeassistant.core import (
     HomeAssistant,
@@ -23,24 +21,24 @@ from homeassistant.core import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import (
     async_track_point_in_time,
-    async_track_state_change_event,
 )
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 
 from .const import (
-    ACTION_OFF,
-    ACTION_ON,
-    ACTION_TOGGLE,
-    ATTR_ACTION,
     ATTR_AT_TIME,
     ATTR_DELAY,
     ATTR_ENTITY_ID,
+    ATTR_FINISH_ACTIONS,
     ATTR_NOTIFY,
     ATTR_NOTIFY_HA,
     ATTR_NOTIFY_MOBILE,
+    ATTR_NOTIFY_DEVICES,
     ATTR_PREFERENCES,
-    ATTR_RUN_NOW,
+    ATTR_START_ACTIONS,
+    ATTR_TASK_ID,
+    ATTR_TASK_LABEL,
     ATTR_TIME_MODE,
     ATTR_UNIT,
     DOMAIN,
@@ -56,7 +54,11 @@ from .const import (
     UNIT_HOURS,
     UNIT_MINUTES,
     UNIT_SECONDS,
-    VALID_ACTIONS,
+    # Legacy imports for backward compatibility
+    ATTR_ACTION,
+    ATTR_RUN_NOW,
+    ATTR_SERVICE,
+    ATTR_SERVICE_DATA,
 )
 from .store import QuickTimerStore, QuickTimerPreferencesStore
 
@@ -70,18 +72,26 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 # Service schemas
 RUN_ACTION_SCHEMA = vol.Schema(
     {
-        vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+        vol.Optional(ATTR_TASK_ID): cv.string,  # Unique ID for scoped tasks
+        vol.Optional(ATTR_ENTITY_ID): cv.entity_id,  # Legacy support
         vol.Optional(ATTR_DELAY): vol.All(
             vol.Coerce(int), vol.Range(min=1, max=86400)
         ),
         vol.Optional(ATTR_UNIT, default=UNIT_MINUTES): vol.In([UNIT_SECONDS, UNIT_MINUTES, UNIT_HOURS]),
-        vol.Required(ATTR_ACTION): vol.In(VALID_ACTIONS),
+        vol.Optional(ATTR_TASK_LABEL): cv.string,  # Human-readable label for overview
+        vol.Optional(ATTR_START_ACTIONS): vol.All(cv.ensure_list, [dict]),  # Execute on start (optional)
+        vol.Optional(ATTR_FINISH_ACTIONS): vol.All(cv.ensure_list, [dict]),  # Execute on finish (required, optional for legacy)
         vol.Optional(ATTR_NOTIFY, default=False): cv.boolean,
-        vol.Optional(ATTR_RUN_NOW, default=False): cv.boolean,
         vol.Optional(ATTR_NOTIFY_HA, default=False): cv.boolean,
         vol.Optional(ATTR_NOTIFY_MOBILE, default=False): cv.boolean,
+        vol.Optional(ATTR_NOTIFY_DEVICES): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(ATTR_AT_TIME): cv.string,  # HH:MM format for absolute time
         vol.Optional(ATTR_TIME_MODE, default=TIME_MODE_RELATIVE): vol.In([TIME_MODE_RELATIVE, TIME_MODE_ABSOLUTE]),
+        # Legacy fields for backward compatibility
+        vol.Optional(ATTR_ACTION): cv.string,
+        vol.Optional(ATTR_SERVICE): cv.string,
+        vol.Optional(ATTR_SERVICE_DATA): dict,
+        vol.Optional(ATTR_RUN_NOW): cv.boolean,
     }
 )
 
@@ -96,17 +106,10 @@ def convert_to_seconds(delay: int, unit: str) -> int:
         return delay * 60
 
 
-def get_reverse_action(action: str) -> str:
-    """Get the reverse action for run_now mode."""
-    if action == ACTION_ON:
-        return ACTION_OFF
-    elif action == ACTION_OFF:
-        return ACTION_ON
-    return ACTION_TOGGLE
-
 CANCEL_ACTION_SCHEMA = vol.Schema(
     {
-        vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+        vol.Optional(ATTR_TASK_ID): cv.string,  # Task ID for scoped cancellation
+        vol.Optional(ATTR_ENTITY_ID): cv.entity_id,  # Legacy support
     }
 )
 
@@ -166,29 +169,33 @@ class QuickTimerCoordinator:
 
     async def async_schedule_action(
         self,
-        entity_id: str,
+        task_id: str,
         delay: int,
         unit: str,
-        action: str,
+        finish_actions: list[dict[str, Any]],
+        start_actions: list[dict[str, Any]] | None = None,
         notify: bool = False,
-        run_now: bool = False,
         notify_ha: bool = False,
         notify_mobile: bool = False,
+        notify_devices: list[str] | None = None,
         at_time: str | None = None,
         time_mode: str = TIME_MODE_RELATIVE,
+        task_label: str | None = None,
     ) -> None:
-        """Schedule an action for an entity."""
-        # Cancel any existing task for this entity
-        await self.async_cancel_action(entity_id, silent=True)
+        """Schedule a task with start_actions (optional) and finish_actions (required)."""
+        # Cancel any existing task with this ID
+        await self.async_cancel_action(task_id, silent=True)
 
         now = dt_util.now()
         
         # Calculate scheduled time based on mode
         if time_mode == TIME_MODE_ABSOLUTE and at_time:
-            # Parse absolute time (HH:MM format)
+            # Parse absolute time (HH:MM or HH:MM:SS format)
             try:
-                hours, minutes = map(int, at_time.split(':'))
-                scheduled_time = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+                parts = at_time.split(':')
+                hours, minutes = int(parts[0]), int(parts[1])
+                seconds = int(parts[2]) if len(parts) > 2 else 0
+                scheduled_time = now.replace(hour=hours, minute=minutes, second=seconds, microsecond=0)
                 
                 # Handle crossing midnight - if the time is in the past, schedule for tomorrow
                 if scheduled_time <= now:
@@ -210,199 +217,204 @@ class QuickTimerCoordinator:
         scheduled_time_str = now.isoformat()
         end_time_str = scheduled_time.isoformat()
 
-        # Determine the actual action to schedule
-        actual_action = action
-        original_action = None
-
-        if run_now:
-            # Execute immediate action
-            original_action = action
-            actual_action = get_reverse_action(action)
-            await self._execute_action(entity_id, action)
+        # Execute start actions immediately (if any)
+        if start_actions:
+            _LOGGER.info("Executing %d start actions for task %s", len(start_actions), task_id)
+            for idx, action_def in enumerate(start_actions):
+                try:
+                    await self._execute_action_definition(action_def)
+                except Exception as err:
+                    _LOGGER.error("Start action %d failed for task %s: %s", idx, task_id, err)
 
         # Store the task
         await self.store.async_add_task(
-            entity_id=entity_id,
-            action=actual_action,
+            task_id=task_id,
             scheduled_time=scheduled_time_str,
             end_time=end_time_str,
             delay_seconds=delay_seconds,
+            start_actions=start_actions or [],
+            finish_actions=finish_actions,
             notify=notify,
             notify_ha=notify_ha,
             notify_mobile=notify_mobile,
-            run_now=run_now,
-            original_action=original_action,
+            notify_devices=notify_devices or [],
             at_time=at_time,
             time_mode=time_mode,
+            task_label=task_label,
         )
 
-        # Add to history for persistence
-        history_entry = {
-            "action": action,
-            "time_mode": time_mode,
-            "timestamp": now.isoformat(),
-        }
-        if time_mode == TIME_MODE_ABSOLUTE:
-            history_entry["at_time"] = at_time
-        else:
-            history_entry["delay"] = delay
-            history_entry["unit"] = unit
-        
-        await self.preferences_store.async_add_to_history(entity_id, history_entry)
-        
-        # Save current preferences
-        await self.preferences_store.async_set_preferences(
-            entity_id,
-            {
-                "last_action": action,
-                "last_time_mode": time_mode,
-                "last_delay": delay,
-                "last_unit": unit,
-                "last_at_time": at_time,
-                "notify_ha": notify_ha,
-                "notify_mobile": notify_mobile,
-            }
-        )
-        
-        # Update preferences sensor
-        self._update_preferences_sensor()
-
-        # Schedule the action
+        # Schedule the finish actions
         cancel_callback = async_track_point_in_time(
             self.hass,
-            self._create_action_callback(
-                entity_id=entity_id, 
-                action=actual_action, 
+            self._create_finish_actions_callback(
+                task_id=task_id,
+                finish_actions=finish_actions,
                 notify=notify,
                 notify_ha=notify_ha,
                 notify_mobile=notify_mobile,
+                notify_devices=notify_devices,
+                task_label=task_label,
             ),
             scheduled_time,
         )
-        self._scheduled_tasks[entity_id] = cancel_callback
-
-        # Listen for state changes to auto-cancel if user manually changes state
-        # (only if not run_now mode, as run_now expects the state to change)
-        if not run_now:
-            self._setup_state_listener(entity_id, actual_action)
+        self._scheduled_tasks[task_id] = cancel_callback
 
         # Fire event
         self.hass.bus.async_fire(
             EVENT_TASK_STARTED,
             {
-                "entity_id": entity_id,
-                "action": actual_action,
+                "task_id": task_id,
+                "start_actions": start_actions or [],
+                "finish_actions": finish_actions,
                 "scheduled_time": scheduled_time_str,
                 "end_time": end_time_str,
                 "delay_seconds": delay_seconds,
-                "run_now": run_now,
             },
         )
+
+        # Add history entry for the primary target entity
+        if finish_actions:
+            primary_entity = finish_actions[0].get("target", {}).get("entity_id", task_id)
+            await self.preferences_store.async_add_to_history(
+                primary_entity,
+                {
+                    "delay": delay,
+                    "unit": unit,
+                    "time_mode": time_mode,
+                    "at_time": at_time,
+                    "start_actions": start_actions or [],
+                    "finish_actions": finish_actions,
+                },
+            )
+            self._update_preferences_sensor()
 
         # Update sensor
         self._update_sensor()
 
         # Send notification if enabled
-        if notify_ha or notify_mobile:
-            if time_mode == TIME_MODE_ABSOLUTE and at_time:
-                time_str = f"at {at_time}"
-            else:
-                time_str = self._format_delay(delay, unit)
-            if run_now:
-                await self._send_notification(
-                    f"Turned on: {entity_id}",
-                    f"Will automatically turn off in {time_str}",
-                    notify_ha=notify_ha,
-                    notify_mobile=notify_mobile,
-                )
-            else:
-                await self._send_notification(
-                    f"Scheduled: {action.upper()} for {entity_id}",
-                    f"Will execute at {scheduled_time.strftime('%H:%M:%S')}",
-                    notify_ha=notify_ha,
-                    notify_mobile=notify_mobile,
-                )
+        # if notify_ha or notify_mobile or notify_devices:
+        #     display_name = task_label or task_id
+        #     if time_mode == TIME_MODE_ABSOLUTE and at_time:
+        #         time_str = f"at {at_time}"
+        #     else:
+        #         time_str = self._format_delay(delay, unit)
+        #     await self._send_notification(
+        #         f"Timer Started: {display_name}",
+        #         f"Will complete {time_str} ({scheduled_time.strftime('%H:%M:%S')})",
+        #         notify_ha=notify_ha,
+        #         notify_mobile=notify_mobile,
+        #         notify_devices=notify_devices,
+        #     )
 
         _LOGGER.info(
-            "Scheduled %s for %s at %s (in %d seconds, run_now=%s, time_mode=%s)",
-            actual_action,
-            entity_id,
+            "Scheduled task %s at %s (in %d seconds, time_mode=%s)",
+            task_id,
             end_time_str,
             delay_seconds,
-            run_now,
             time_mode,
         )
 
-    async def _execute_immediate_action(self, entity_id: str, action: str) -> None:
-        """Execute an immediate action (for run_now mode) - legacy wrapper."""
-        await self._execute_action(entity_id, action)
+    async def _execute_action_definition(self, action_def: dict[str, Any]) -> None:
+        """Execute a single action definition from an action array.
+        
+        Action format: {"service": "domain.service", "target": {...}, "data": {...}}
+        """
+        service = action_def.get("service")
+        if not service:
+            _LOGGER.error("Action definition missing 'service' field: %s", action_def)
+            return
 
-    async def _execute_action(self, entity_id: str, action: str) -> None:
-        """Execute an action based on entity domain and action type."""
-        domain = entity_id.split(".")[0]
-        service = None
-        service_data = {ATTR_ENTITY_ID: entity_id}
+        target = action_def.get("target", {})
+        data = action_def.get("data", {})
 
-        # Map actions to domain services
-        if action == ACTION_ON:
-            service = SERVICE_TURN_ON
-        elif action == ACTION_OFF:
-            service = SERVICE_TURN_OFF
-        elif action == ACTION_TOGGLE:
-            service = SERVICE_TOGGLE
-        elif action == "turn_off":
-            service = SERVICE_TURN_OFF
-        # Cover actions
-        elif action == "open_cover":
-            domain = "cover"
-            service = "open_cover"
-        elif action == "close_cover":
-            domain = "cover"
-            service = "close_cover"
-        elif action == "stop_cover":
-            domain = "cover"
-            service = "stop_cover"
-        # Media player actions
-        elif action == "media_play":
-            domain = "media_player"
-            service = "media_play"
-        elif action == "media_stop":
-            domain = "media_player"
-            service = "media_stop"
-        # Vacuum actions
-        elif action == "start":
-            domain = "vacuum"
-            service = "start"
-        elif action == "return_to_base":
-            domain = "vacuum"
-            service = "return_to_base"
-        # Climate actions
-        elif action == "set_hvac_mode_heat":
-            domain = "climate"
-            service = "set_hvac_mode"
-            service_data["hvac_mode"] = "heat"
-        elif action == "set_hvac_mode_cool":
-            domain = "climate"
-            service = "set_hvac_mode"
-            service_data["hvac_mode"] = "cool"
-        elif action == "set_hvac_mode_auto":
-            domain = "climate"
-            service = "set_hvac_mode"
-            service_data["hvac_mode"] = "auto"
+        # Parse service
+        if "." in service:
+            domain, service_name = service.split(".", 1)
         else:
-            # Fallback to toggle
-            service = SERVICE_TOGGLE
+            _LOGGER.error("Invalid service format '%s': must be 'domain.service'", service)
+            return
 
         try:
             await self.hass.services.async_call(
                 domain,
-                service,
-                service_data,
+                service_name,
+                data or None,
+                blocking=True,
+                target=target or None,
+            )
+            _LOGGER.info("Executed %s.%s with data=%s, target=%s", domain, service_name, data, target)
+        except Exception as err:
+            _LOGGER.error("Failed to execute %s: %s", service, err)
+            raise
+
+    async def _execute_immediate_action(self, entity_id: str, action: str) -> None:
+        """Execute an immediate action (legacy compatibility) - deprecated."""
+        await self._execute_action(entity_id, action=action)
+
+    def _map_legacy_action(self, entity_id: str, action: str) -> tuple[str, str, dict]:
+        """Map legacy action string to (domain, service_name, extra_data)."""
+        domain = entity_id.split(".")[0]
+        extra_data: dict = {}
+
+        if action in ("on", "turn_on"):
+            return domain, SERVICE_TURN_ON, extra_data
+        if action in ("off", "turn_off"):
+            return domain, SERVICE_TURN_OFF, extra_data
+        if action in ("toggle",):
+            return domain, SERVICE_TOGGLE, extra_data
+        if action in ("open_cover", "close_cover", "stop_cover"):
+            return "cover", action, extra_data
+        if action in ("media_play", "media_stop"):
+            return "media_player", action, extra_data
+        if action in ("start", "return_to_base"):
+            return "vacuum", action, extra_data
+        if action.startswith("set_hvac_mode_"):
+            hvac_mode = action.replace("set_hvac_mode_", "")
+            extra_data["hvac_mode"] = hvac_mode
+            return "climate", "set_hvac_mode", extra_data
+        # Fallback: treat as service name on the entity's domain
+        return domain, action, extra_data
+
+    async def _execute_action(
+        self,
+        entity_id: str,
+        action: str | None = None,
+        service: str | None = None,
+        service_data: dict | None = None,
+    ) -> None:
+        """Execute an action/service on an entity (universal)."""
+        call_data = dict(service_data) if service_data else {}
+        call_data[ATTR_ENTITY_ID] = entity_id
+
+        if service:
+            # Universal mode: "domain.service_name" or just "service_name"
+            if "." in service:
+                svc_domain, svc_name = service.split(".", 1)
+            else:
+                svc_domain = entity_id.split(".")[0]
+                svc_name = service
+        elif action:
+            # Legacy mode: map action constant to domain.service
+            svc_domain, svc_name, extra = self._map_legacy_action(entity_id, action)
+            call_data.update(extra)
+        else:
+            _LOGGER.error("Neither 'service' nor 'action' provided for %s", entity_id)
+            return
+
+        try:
+            await self.hass.services.async_call(
+                svc_domain,
+                svc_name,
+                call_data,
                 blocking=True,
             )
-            _LOGGER.info("Executed action %s (service: %s.%s) for %s", action, domain, service, entity_id)
+            _LOGGER.info(
+                "Executed %s.%s for %s", svc_domain, svc_name, entity_id,
+            )
         except Exception as err:
-            _LOGGER.error("Failed to execute action %s for %s: %s", action, entity_id, err)
+            _LOGGER.error(
+                "Failed to execute %s.%s for %s: %s", svc_domain, svc_name, entity_id, err,
+            )
 
     def _format_delay(self, delay: int, unit: str) -> str:
         """Format delay for display."""
@@ -413,128 +425,82 @@ class QuickTimerCoordinator:
         else:
             return f"{delay} minutes"
 
-    def _setup_state_listener(self, entity_id: str, scheduled_action: str) -> None:
-        """Set up a state change listener to auto-cancel redundant tasks."""
-        
-        @callback
-        def state_change_listener(event) -> None:
-            """Handle state change events."""
-            new_state = event.data.get("new_state")
-            old_state = event.data.get("old_state")
-
-            if new_state is None or old_state is None:
-                return
-
-            new_state_value = new_state.state
-            old_state_value = old_state.state
-
-            # Check if the manual change makes the scheduled action redundant
-            should_cancel = False
-
-            if scheduled_action == ACTION_ON and new_state_value == STATE_ON:
-                should_cancel = True
-                _LOGGER.info(
-                    "Entity %s was manually turned ON, cancelling scheduled ON action",
-                    entity_id,
-                )
-            elif scheduled_action == ACTION_OFF and new_state_value == STATE_OFF:
-                should_cancel = True
-                _LOGGER.info(
-                    "Entity %s was manually turned OFF, cancelling scheduled OFF action",
-                    entity_id,
-                )
-            elif scheduled_action == ACTION_TOGGLE:
-                # For toggle, cancel if state changed manually
-                if new_state_value != old_state_value:
-                    should_cancel = True
-                    _LOGGER.info(
-                        "Entity %s state was manually changed, cancelling scheduled TOGGLE action",
-                        entity_id,
-                    )
-
-            if should_cancel:
-                self.hass.async_create_task(
-                    self.async_cancel_action(entity_id, reason="manual_state_change")
-                )
-
-        # Remove any existing listener
-        if entity_id in self._state_listeners:
-            self._state_listeners[entity_id]()
-
-        # Set up new listener
-        self._state_listeners[entity_id] = async_track_state_change_event(
-            self.hass, [entity_id], state_change_listener
-        )
-
-    def _create_action_callback(
-        self, 
-        entity_id: str, 
-        action: str, 
+    def _create_finish_actions_callback(
+        self,
+        task_id: str,
+        finish_actions: list[dict[str, Any]],
         notify: bool = False,
         notify_ha: bool = False,
         notify_mobile: bool = False,
+        notify_devices: list[str] | None = None,
+        task_label: str | None = None,
     ):
-        """Create a callback for the scheduled action."""
+        """Create a callback for executing finish actions when timer completes."""
+        display_name = task_label or task_id
 
-        async def execute_action(now) -> None:
-            """Execute the scheduled action."""
-            _LOGGER.info("Executing scheduled action %s for %s", action, entity_id)
+        async def execute_finish_actions(now) -> None:
+            """Execute all finish actions."""
+            _LOGGER.info("Executing %d finish actions for task %s", len(finish_actions), task_id)
 
-            try:
-                # Use the universal action executor
-                await self._execute_action(entity_id, action)
+            success_count = 0
+            error_count = 0
 
-                # Fire completion event
-                self.hass.bus.async_fire(
-                    EVENT_TASK_COMPLETED,
-                    {
-                        "entity_id": entity_id,
-                        "action": action,
-                    },
-                )
+            for idx, action_def in enumerate(finish_actions):
+                try:
+                    await self._execute_action_definition(action_def)
+                    success_count += 1
+                except Exception as err:
+                    _LOGGER.error("Finish action %d failed for task %s: %s", idx, task_id, err)
+                    error_count += 1
 
-                # Send notification if enabled
-                if notify_ha or notify_mobile:
+            # Fire completion event
+            self.hass.bus.async_fire(
+                EVENT_TASK_COMPLETED,
+                {
+                    "task_id": task_id,
+                    "finish_actions": finish_actions,
+                    "success_count": success_count,
+                    "error_count": error_count,
+                },
+            )
+
+            # Send notification if enabled
+            if notify_ha or notify_mobile or notify_devices:
+                if error_count > 0:
                     await self._send_notification(
-                        f"Executed: {action.upper()} for {entity_id}",
-                        "Scheduled action completed successfully",
+                        f"Timer Completed: {display_name}",
+                        f"{success_count} actions succeeded, {error_count} failed",
                         notify_ha=notify_ha,
                         notify_mobile=notify_mobile,
+                        notify_devices=notify_devices,
                     )
-
-            except Exception as err:
-                _LOGGER.error(
-                    "Failed to execute action %s for %s: %s",
-                    action,
-                    entity_id,
-                    err,
-                )
-                if notify_ha or notify_mobile:
+                else:
                     await self._send_notification(
-                        f"Error: {action.upper()} for {entity_id}",
-                        f"Action failed: {err}",
+                        f"Timer Completed: {display_name}",
+                        f"All {success_count} actions executed successfully",
                         notify_ha=notify_ha,
                         notify_mobile=notify_mobile,
+                        notify_devices=notify_devices,
                     )
 
             # Clean up
-            await self._cleanup_task(entity_id)
+            await self._cleanup_task(task_id)
 
-        return execute_action
+        return execute_finish_actions
 
-    async def _cleanup_task(self, entity_id: str) -> None:
+    async def _cleanup_task(self, task_id: str) -> None:
         """Clean up a completed or cancelled task."""
         # Remove from scheduled tasks
-        if entity_id in self._scheduled_tasks:
-            del self._scheduled_tasks[entity_id]
+        if task_id in self._scheduled_tasks:
+            del self._scheduled_tasks[task_id]
 
-        # Remove state listener
-        if entity_id in self._state_listeners:
-            self._state_listeners[entity_id]()
-            del self._state_listeners[entity_id]
+        # Remove state listener (if any)
+        if task_id in self._state_listeners:
+            self._state_listeners[task_id]()
+            del self._state_listeners[task_id]
 
         # Remove from store
-        await self.store.async_remove_task(entity_id)
+        await self.store.async_remove_task(task_id)
 
         # Update sensor
         self._update_sensor()
@@ -564,45 +530,43 @@ class QuickTimerCoordinator:
         _LOGGER.info("Quick Timer shutdown: cancelled all in-memory callbacks, tasks preserved in storage")
 
     async def async_cancel_action(
-        self, entity_id: str, silent: bool = False, reason: str = "user_request"
+        self, task_id: str, silent: bool = False, reason: str = "user_request"
     ) -> bool:
-        """Cancel a scheduled action."""
-        if entity_id not in self._scheduled_tasks and not self.store.has_task(entity_id):
+        """Cancel a scheduled task."""
+        if task_id not in self._scheduled_tasks and not self.store.has_task(task_id):
             if not silent:
-                _LOGGER.debug("No scheduled task found for %s", entity_id)
+                _LOGGER.debug("No scheduled task found for %s", task_id)
             return False
 
         # Cancel the scheduled callback
-        if entity_id in self._scheduled_tasks:
-            self._scheduled_tasks[entity_id]()
+        if task_id in self._scheduled_tasks:
+            self._scheduled_tasks[task_id]()
 
-        task = self.store.get_task(entity_id)
+        task = self.store.get_task(task_id)
 
         # Clean up
-        await self._cleanup_task(entity_id)
+        await self._cleanup_task(task_id)
 
         # Fire cancellation event
         self.hass.bus.async_fire(
             EVENT_TASK_CANCELLED,
             {
-                "entity_id": entity_id,
+                "task_id": task_id,
                 "reason": reason,
             },
         )
 
-        if not silent and task and task.get("notify", True):
-            if reason == "manual_state_change":
-                await self._send_notification(
-                    f"Auto-cancelled: {entity_id}",
-                    "Scheduled action was cancelled because state was changed manually",
-                )
-            else:
-                await self._send_notification(
-                    f"Cancelled: {entity_id}",
-                    "Scheduled action was cancelled",
-                )
+        if not silent and task and (task.get("notify_ha", False) or task.get("notify_mobile", False) or task.get("notify", False) or task.get("notify_devices")):
+            display_name = task.get("task_label") or task_id
+            await self._send_notification(
+                f"Timer Cancelled: {display_name}",
+                f"Scheduled task was cancelled ({reason})",
+                notify_ha=task.get("notify_ha", task.get("notify", False)),
+                notify_mobile=task.get("notify_mobile", False),
+                notify_devices=task.get("notify_devices"),
+            )
 
-        _LOGGER.info("Cancelled scheduled action for %s (reason: %s)", entity_id, reason)
+        _LOGGER.info("Cancelled scheduled task %s (reason: %s)", task_id, reason)
         return True
 
     async def _send_notification(
@@ -611,6 +575,7 @@ class QuickTimerCoordinator:
         message: str,
         notify_ha: bool = True,
         notify_mobile: bool = False,
+        notify_devices: list[str] | None = None,
     ) -> None:
         """Send notifications (HA persistent and/or mobile push)."""
         # HA Persistent Notification
@@ -628,98 +593,221 @@ class QuickTimerCoordinator:
             except Exception as err:
                 _LOGGER.warning("Failed to send HA notification: %s", err)
 
-        # Mobile Push Notification
-        if notify_mobile:
+        # Mobile Push Notification — specific devices or all
+        if notify_devices:
+            await self._send_mobile_notification(title, message, device_ids=notify_devices)
+        elif notify_mobile:
             await self._send_mobile_notification(title, message)
 
-    async def _send_mobile_notification(self, title: str, message: str) -> None:
-        """Send mobile push notification to all registered mobile apps."""
+    async def _send_mobile_notification(
+        self, title: str, message: str, device_ids: list[str] | None = None
+    ) -> None:
+        """Send mobile push notification to specific devices or all mobile apps.
+
+        Strategy for targeted notifications:
+        A. Find a notify entity for the device → notify.send_message (modern HA)
+        B. Guess service name via slugify(device.name) or identifier → notify.mobile_app_* (legacy)
+
+        Broadcast mode iterates all registered notify.mobile_app_* services.
+        """
         try:
-            # Find all mobile app notify services
-            services = self.hass.services.async_services()
-            notify_services = services.get("notify", {})
-            
-            mobile_services = [
-                svc for svc in notify_services.keys() 
-                if svc.startswith("mobile_app_")
-            ]
-            
-            for service_name in mobile_services:
-                try:
-                    await self.hass.services.async_call(
-                        "notify",
-                        service_name,
-                        {
-                            "title": title,
-                            "message": message,
-                            "data": {
-                                "tag": "quick_timer",
-                                "importance": "high",
-                            },
-                        },
-                    )
-                    _LOGGER.debug("Sent mobile notification to %s", service_name)
-                except Exception as err:
-                    _LOGGER.warning("Failed to send notification to %s: %s", service_name, err)
-                    
-            if not mobile_services:
-                _LOGGER.debug("No mobile app notify services found")
-                
+            from homeassistant.helpers import device_registry as dr
+            from homeassistant.helpers import entity_registry as er
+
+            notify_data = {
+                "title": title,
+                "message": message,
+                "data": {"tag": "quick_timer", "importance": "high"},
+            }
+
+            # ── 1. Targeted: specific device_ids selected ──
+            if device_ids:
+                dev_registry = dr.async_get(self.hass)
+                ent_registry = er.async_get(self.hass)
+
+                for device_id in device_ids:
+                    device = dev_registry.async_get(device_id)
+                    if not device:
+                        _LOGGER.warning("Device %s not found in registry", device_id)
+                        continue
+
+                    # Strategy A: Find a notify entity for this device
+                    notify_entity_id = None
+                    for entry in ent_registry.entities.values():
+                        if (
+                            entry.domain == "notify"
+                            and entry.device_id == device_id
+                            and entry.disabled_by is None
+                        ):
+                            notify_entity_id = entry.entity_id
+                            break
+
+                    if notify_entity_id:
+                        try:
+                            await self.hass.services.async_call(
+                                "notify",
+                                "send_message",
+                                {"message": message, "title": title},
+                                target={"entity_id": notify_entity_id},
+                            )
+                            _LOGGER.info(
+                                "Notification sent via entity %s (device %s)",
+                                notify_entity_id, device.name,
+                            )
+                            continue
+                        except Exception as e:
+                            _LOGGER.warning(
+                                "send_message to %s failed: %s, trying fallback service",
+                                notify_entity_id, e,
+                            )
+
+                    # Strategy B: Guess service name from device name / identifier
+                    service_candidates = []
+
+                    if device.name:
+                        safe_name = slugify(device.name)
+                        service_candidates.append(f"mobile_app_{safe_name}")
+                        service_candidates.append(f"mobile_app_{safe_name.replace('-', '_')}")
+
+                    for id_domain, identifier in device.identifiers:
+                        if id_domain == "mobile_app":
+                            service_candidates.append(f"mobile_app_{identifier}")
+
+                    service_called = False
+                    for service_name in service_candidates:
+                        if self.hass.services.has_service("notify", service_name):
+                            try:
+                                await self.hass.services.async_call(
+                                    "notify", service_name, notify_data
+                                )
+                                _LOGGER.info(
+                                    "Notification sent via service notify.%s (device %s)",
+                                    service_name, device.name,
+                                )
+                                service_called = True
+                                break
+                            except Exception as e:
+                                _LOGGER.error(
+                                    "Service notify.%s failed: %s", service_name, e
+                                )
+
+                    if not service_called:
+                        _LOGGER.error(
+                            "Could not send notification to device %s (%s): "
+                            "No matching notify entity or mobile_app_* service found. "
+                            "Checked services: %s",
+                            device_id, device.name, service_candidates,
+                        )
+
+            # ── 2. Broadcast: send to all mobile_app devices ──
+            else:
+                services = self.hass.services.async_services()
+                notify_services = services.get("notify", {})
+
+                sent_count = 0
+                for service_name in notify_services:
+                    if service_name.startswith("mobile_app_"):
+                        try:
+                            await self.hass.services.async_call(
+                                "notify", service_name, notify_data
+                            )
+                            sent_count += 1
+                        except Exception as e:
+                            _LOGGER.warning(
+                                "Broadcast to notify.%s failed: %s", service_name, e
+                            )
+
+                if sent_count == 0:
+                    # Fallback: try entity-based broadcast
+                    _LOGGER.warning("No mobile_app_* services found, trying entity-based broadcast")
+                    ent_registry = er.async_get(self.hass)
+                    all_notify_entities = [
+                        entry.entity_id
+                        for entry in ent_registry.entities.values()
+                        if entry.domain == "notify"
+                        and entry.disabled_by is None
+                        and entry.device_id
+                    ]
+                    if all_notify_entities:
+                        try:
+                            await self.hass.services.async_call(
+                                "notify",
+                                "send_message",
+                                {"message": message, "title": title},
+                                target={"entity_id": all_notify_entities},
+                            )
+                            _LOGGER.info(
+                                "Broadcast via send_message to %d entities",
+                                len(all_notify_entities),
+                            )
+                        except Exception as e:
+                            _LOGGER.error("Entity-based broadcast failed: %s", e)
+                    else:
+                        _LOGGER.error("No notify entities or services found for broadcast")
+
         except Exception as err:
-            _LOGGER.warning("Failed to send mobile notifications: %s", err)
+            _LOGGER.error(
+                "Failed to send mobile notification: %s", err, exc_info=True
+            )
 
     async def async_restore_tasks(self) -> None:
         """Restore scheduled tasks after HA restart."""
         tasks = self.store.get_all_tasks()
         now = dt_util.now()
 
-        for entity_id, task in list(tasks.items()):
+        for task_id, task in list(tasks.items()):
             end_time_str = task.get("end_time") or task.get("scheduled_time")
             scheduled_time = dt_util.parse_datetime(end_time_str) if end_time_str else None
 
             if scheduled_time is None:
-                _LOGGER.warning("Invalid scheduled time for %s, removing task", entity_id)
-                await self.store.async_remove_task(entity_id)
+                _LOGGER.warning("Invalid scheduled time for task %s, removing", task_id)
+                await self.store.async_remove_task(task_id)
+                continue
+
+            finish_actions = task.get("finish_actions", [])
+            if not finish_actions:
+                _LOGGER.warning("Task %s has no finish_actions, removing", task_id)
+                await self.store.async_remove_task(task_id)
                 continue
 
             if scheduled_time <= now:
                 # Task should have already executed, execute it now
                 _LOGGER.info(
-                    "Executing missed task for %s (was scheduled for %s)",
-                    entity_id,
+                    "Executing missed task %s (was scheduled for %s)",
+                    task_id,
                     end_time_str,
                 )
-                callback_fn = self._create_action_callback(
-                    entity_id=entity_id,
-                    action=task["action"],
+                callback_fn = self._create_finish_actions_callback(
+                    task_id=task_id,
+                    finish_actions=finish_actions,
                     notify=task.get("notify", False),
                     notify_ha=task.get("notify_ha", False),
                     notify_mobile=task.get("notify_mobile", False),
+                    notify_devices=task.get("notify_devices"),
+                    task_label=task.get("task_label"),
                 )
                 await callback_fn(now)
             else:
                 # Reschedule the task
                 _LOGGER.info(
-                    "Restoring scheduled task for %s at %s",
-                    entity_id,
+                    "Restoring scheduled task %s at %s",
+                    task_id,
                     end_time_str,
                 )
                 cancel_callback = async_track_point_in_time(
                     self.hass,
-                    self._create_action_callback(
-                        entity_id=entity_id,
-                        action=task["action"],
+                    self._create_finish_actions_callback(
+                        task_id=task_id,
+                        finish_actions=finish_actions,
                         notify=task.get("notify", False),
                         notify_ha=task.get("notify_ha", False),
                         notify_mobile=task.get("notify_mobile", False),
+                        notify_devices=task.get("notify_devices"),
+                        task_label=task.get("task_label"),
                     ),
                     scheduled_time,
                 )
-                self._scheduled_tasks[entity_id] = cancel_callback
-
-                # Only set up state listener if not run_now mode
-                if not task.get("run_now", False):
-                    self._setup_state_listener(entity_id, task["action"])
+                self._scheduled_tasks[task_id] = cancel_callback
 
         self._update_sensor()
 
@@ -753,28 +841,95 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _LOGGER.error("Quick Timer coordinator not initialized")
             return
 
-        entity_id = call.data[ATTR_ENTITY_ID]
+        # New architecture: task_id + start_actions + finish_actions
+        task_id = call.data.get(ATTR_TASK_ID)
+        entity_id = call.data.get(ATTR_ENTITY_ID)
         delay = call.data.get(ATTR_DELAY, 15)
         unit = call.data.get(ATTR_UNIT, UNIT_MINUTES)
-        action = call.data[ATTR_ACTION]
+        start_actions = call.data.get(ATTR_START_ACTIONS)
+        finish_actions = call.data.get(ATTR_FINISH_ACTIONS)
         notify = call.data.get(ATTR_NOTIFY, False)
-        run_now = call.data.get(ATTR_RUN_NOW, False)
         notify_ha = call.data.get(ATTR_NOTIFY_HA, False)
         notify_mobile = call.data.get(ATTR_NOTIFY_MOBILE, False)
+        notify_devices = call.data.get(ATTR_NOTIFY_DEVICES, [])
+        task_label = call.data.get(ATTR_TASK_LABEL)
         at_time = call.data.get(ATTR_AT_TIME)
         time_mode = call.data.get(ATTR_TIME_MODE, TIME_MODE_RELATIVE)
 
+        # Legacy support: convert old action/service parameters to action arrays
+        if not finish_actions:
+            action = call.data.get(ATTR_ACTION)
+            service = call.data.get(ATTR_SERVICE)
+            service_data = call.data.get(ATTR_SERVICE_DATA, {})
+            run_now = call.data.get(ATTR_RUN_NOW, False)
+
+            if not action and not service:
+                _LOGGER.error("Either 'finish_actions' or legacy 'action'/'service' must be provided")
+                return
+
+            # Convert legacy parameters to action format
+            if not entity_id:
+                _LOGGER.error("'entity_id' is required for legacy mode")
+                return
+
+            # Build finish_actions from legacy parameters
+            if service:
+                finish_service = service
+            elif action:
+                # Map legacy action to service
+                domain = entity_id.split(".")[0]
+                if action in ("on", "turn_on"):
+                    finish_service = f"{domain}.turn_on"
+                elif action in ("off", "turn_off"):
+                    finish_service = f"{domain}.turn_off"
+                elif action == "toggle":
+                    finish_service = f"{domain}.toggle"
+                else:
+                    finish_service = f"{domain}.{action}"
+            else:
+                _LOGGER.error("No valid action or service provided")
+                return
+
+            finish_actions = [{
+                "service": finish_service,
+                "target": {"entity_id": entity_id},
+                "data": service_data or {},
+            }]
+
+            # Handle run_now logic (legacy)
+            if run_now:
+                _LOGGER.warning("run_now is deprecated. Use start_actions instead.")
+                start_actions = finish_actions  # Execute immediately
+                # For reverse, just turn off (simplified)
+                finish_actions = [{
+                    "service": f"{entity_id.split('.')[0]}.turn_off",
+                    "target": {"entity_id": entity_id},
+                    "data": {},
+                }]
+
+        # Default task_id to entity_id for backward compatibility
+        if not task_id:
+            if entity_id:
+                task_id = entity_id
+            else:
+                # Generate task_id from finish_actions
+                import hashlib
+                task_str = str(finish_actions)
+                task_id = f"task_{hashlib.md5(task_str.encode()).hexdigest()[:8]}"
+
         await coord.async_schedule_action(
-            entity_id=entity_id,
+            task_id=task_id,
             delay=delay,
             unit=unit,
-            action=action,
+            finish_actions=finish_actions,
+            start_actions=start_actions,
             notify=notify,
-            run_now=run_now,
             notify_ha=notify_ha,
             notify_mobile=notify_mobile,
+            notify_devices=notify_devices,
             at_time=at_time,
             time_mode=time_mode,
+            task_label=task_label,
         )
 
     async def handle_cancel_action(call: ServiceCall) -> None:
@@ -784,8 +939,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _LOGGER.error("Quick Timer coordinator not initialized")
             return
             
-        entity_id = call.data[ATTR_ENTITY_ID]
-        await coord.async_cancel_action(entity_id)
+        task_id = call.data.get(ATTR_TASK_ID)
+        entity_id = call.data.get(ATTR_ENTITY_ID)
+        
+        # Default to entity_id for backward compatibility
+        if not task_id and entity_id:
+            task_id = entity_id
+        
+        if not task_id:
+            _LOGGER.error("Either 'task_id' or 'entity_id' must be provided")
+            return
+            
+        await coord.async_cancel_action(task_id)
 
     async def handle_get_preferences(call: ServiceCall) -> dict:
         """Handle the get_preferences service call."""

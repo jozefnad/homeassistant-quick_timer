@@ -1,17 +1,24 @@
 run_action:
   name: Run Action
-  description: Schedule a one-time action for any entity with a countdown timer.
+  description: Schedule a one-time timer with optional immediate actions and delayed completion actions.
   fields:
+    task_id:
+      name: Task ID
+      description: Unique identifier for this timer task. Allows multiple timers per entity. If omitted, entity_id will be used (legacy mode).
+      required: false
+      example: "card_abc123"
+      selector:
+        text:
     entity_id:
-      name: Entity
-      description: The entity to perform the action on.
-      required: true
+      name: Entity (Legacy)
+      description: For backward compatibility. Use finish_actions instead for multi-target support.
+      required: false
       example: "light.living_room"
       selector:
         entity:
     delay:
       name: Delay
-      description: The delay before the action is executed (1-86400 depending on unit). Required when using relative time mode.
+      description: The delay before finish actions are executed (1-86400 depending on unit). Required when using relative time mode.
       required: false
       example: 30
       default: 15
@@ -35,21 +42,6 @@ run_action:
               value: "minutes"
             - label: "Hours"
               value: "hours"
-    action:
-      name: Action
-      description: The action to perform on the entity.
-      required: true
-      example: "off"
-      default: "off"
-      selector:
-        select:
-          options:
-            - label: "Turn On"
-              value: "on"
-            - label: "Turn Off"
-              value: "off"
-            - label: "Toggle"
-              value: "toggle"
     time_mode:
       name: Time Mode
       description: Whether to use relative delay or absolute time.
@@ -65,14 +57,35 @@ run_action:
               value: "absolute"
     at_time:
       name: At Time
-      description: The specific time to execute the action (HH:MM format). Required when using absolute time mode. If the time is in the past, it will be scheduled for the next day.
+      description: The specific time to execute finish actions (HH:MM format). Required when using absolute time mode. If the time is in the past, it will be scheduled for the next day.
       required: false
       example: "23:30"
       selector:
         time:
+    start_actions:
+      name: Start Actions (Optional)
+      description: List of actions to execute immediately when timer starts. Each action must have 'service', 'target', and optionally 'data'.
+      required: false
+      example: '[{"service": "light.turn_on", "target": {"entity_id": "light.bedroom"}, "data": {"brightness": 255}}]'
+      selector:
+        object:
+    task_label:
+      name: Task Label
+      description: A human-readable label for this timer task, shown in the overview card. If omitted, the entity name or card ID is used.
+      required: false
+      example: "Kitchen light timer"
+      selector:
+        text:
+    finish_actions:
+      name: Finish Actions
+      description: List of actions to execute when timer completes. Each action must have 'service', 'target', and optionally 'data'.
+      required: false
+      example: '[{"service": "light.turn_off", "target": {"entity_id": "light.bedroom"}}]'
+      selector:
+        object:
     notify_ha:
       name: HA Notification
-      description: Whether to send a persistent notification in Home Assistant when the action completes.
+      description: Whether to send a persistent notification in Home Assistant when the timer completes.
       required: false
       example: false
       default: false
@@ -80,29 +93,38 @@ run_action:
         boolean:
     notify_mobile:
       name: Mobile Notification
-      description: Whether to send push notifications to mobile devices when the action completes.
+      description: Whether to send push notifications to all mobile devices when the timer completes. Use notify_devices for specific devices.
       required: false
       example: false
       default: false
       selector:
         boolean:
-    run_now:
-      name: Run Now
-      description: Execute the action immediately and schedule the reverse action after the delay.
+    notify_devices:
+      name: Notify Devices
+      description: List of specific mobile device IDs to send push notifications to. Overrides notify_mobile when provided.
       required: false
-      example: false
-      default: false
+      example: '["device_id_1", "device_id_2"]'
       selector:
-        boolean:
+        device:
+          filter:
+            - integration: mobile_app
+          multiple: true
 
 cancel_action:
   name: Cancel Action
-  description: Cancel a scheduled action for an entity.
+  description: Cancel a scheduled timer task.
   fields:
+    task_id:
+      name: Task ID
+      description: The unique task ID to cancel. If omitted, entity_id will be used (legacy mode).
+      required: false
+      example: "card_abc123"
+      selector:
+        text:
     entity_id:
-      name: Entity
-      description: The entity to cancel the scheduled action for.
-      required: true
+      name: Entity (Legacy)
+      description: The entity to cancel the scheduled task for. Used when task_id is not provided.
+      required: false
       example: "light.living_room"
       selector:
         entity:

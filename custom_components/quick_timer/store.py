@@ -35,25 +35,16 @@ class QuickTimerMigratableStore(Store):
             STORAGE_VERSION,
         )
 
-        if old_major_version == 1:
-            # Migrate from v1 to v2:
-            # Add new fields: end_time, delay_seconds, run_now, original_action
-            migrated_data = {}
-            for entity_id, task in old_data.items():
-                migrated_task = dict(task)
-                # Add missing fields with sensible defaults
-                if "end_time" not in migrated_task:
-                    migrated_task["end_time"] = migrated_task.get("scheduled_time", "")
-                if "delay_seconds" not in migrated_task:
-                    migrated_task["delay_seconds"] = 0
-                if "run_now" not in migrated_task:
-                    migrated_task["run_now"] = False
-                if "original_action" not in migrated_task:
-                    migrated_task["original_action"] = None
-                migrated_data[entity_id] = migrated_task
-            
-            _LOGGER.info("Migration complete. Migrated %d tasks.", len(migrated_data))
-            return migrated_data
+        # Handle migration from any old version to v4 (task_id-based + action arrays)
+        if old_major_version < 4:
+            # V4 uses task_id as key instead of entity_id
+            # For backward compat, we'll discard old entity-based tasks to avoid conflicts
+            # Users will need to reschedule (clean slate for new architecture)
+            _LOGGER.warning(
+                "Storage v%s detected. Discarding old tasks due to incompatible architecture. "
+                "Please reschedule your timers.", old_major_version
+            )
+            return {}
 
         # If we don't know how to migrate, return empty data
         _LOGGER.warning("Unknown storage version %s, starting fresh", old_major_version)
@@ -86,58 +77,60 @@ class QuickTimerStore:
 
     async def async_add_task(
         self,
-        entity_id: str,
-        action: str,
+        task_id: str,
         scheduled_time: str,
         end_time: str,
         delay_seconds: int,
+        start_actions: list[dict[str, Any]] | None = None,
+        finish_actions: list[dict[str, Any]] | None = None,
         notify: bool = False,
-        run_now: bool = False,
-        original_action: str | None = None,
         notify_ha: bool = False,
         notify_mobile: bool = False,
+        notify_devices: list[str] | None = None,
         at_time: str | None = None,
         time_mode: str = "relative",
+        task_label: str | None = None,
     ) -> None:
-        """Add a scheduled task."""
-        self._data[entity_id] = {
-            "entity_id": entity_id,
-            "action": action,
+        """Add a scheduled task with new architecture (task_id-based, action arrays)."""
+        self._data[task_id] = {
+            "task_id": task_id,
+            "task_label": task_label,
             "scheduled_time": scheduled_time,
             "end_time": end_time,
             "delay_seconds": delay_seconds,
+            "start_actions": start_actions or [],
+            "finish_actions": finish_actions or [],
             "notify": notify,
             "notify_ha": notify_ha,
             "notify_mobile": notify_mobile,
-            "run_now": run_now,
-            "original_action": original_action,
+            "notify_devices": notify_devices or [],
             "at_time": at_time,
             "time_mode": time_mode,
         }
         await self.async_save()
-        _LOGGER.info("Added scheduled task for %s: %s at %s (mode: %s)", entity_id, action, scheduled_time, time_mode)
+        _LOGGER.info("Added scheduled task %s at %s (mode: %s)", task_id, scheduled_time, time_mode)
 
-    async def async_remove_task(self, entity_id: str) -> bool:
+    async def async_remove_task(self, task_id: str) -> bool:
         """Remove a scheduled task."""
-        if entity_id in self._data:
-            del self._data[entity_id]
+        if task_id in self._data:
+            del self._data[task_id]
             await self.async_save()
-            _LOGGER.info("Removed scheduled task for %s", entity_id)
+            _LOGGER.info("Removed scheduled task %s", task_id)
             return True
-        _LOGGER.debug("No task found for %s to remove", entity_id)
+        _LOGGER.debug("No task found for %s to remove", task_id)
         return False
 
-    def get_task(self, entity_id: str) -> dict[str, Any] | None:
+    def get_task(self, task_id: str) -> dict[str, Any] | None:
         """Get a scheduled task."""
-        return self._data.get(entity_id)
+        return self._data.get(task_id)
 
     def get_all_tasks(self) -> dict[str, dict[str, Any]]:
         """Get all scheduled tasks."""
         return self._data.copy()
 
-    def has_task(self, entity_id: str) -> bool:
-        """Check if a task exists for an entity."""
-        return entity_id in self._data
+    def has_task(self, task_id: str) -> bool:
+        """Check if a task exists."""
+        return task_id in self._data
 
 
 class QuickTimerPreferencesStore:
@@ -197,11 +190,30 @@ class QuickTimerPreferencesStore:
         
         history = self._data[entity_id]["history"]
         
-        # Create a comparable key from the entry
-        entry_key = f"{history_entry.get('action', '')}_{history_entry.get('time_mode', '')}_{history_entry.get('delay', '')}_{history_entry.get('unit', '')}_{history_entry.get('at_time', '')}"
+        # Create a comparable key from the entry (updated for new architecture)
+        entry_key = (
+            f"{history_entry.get('time_mode', '')}_"
+            f"{history_entry.get('delay', '')}_"
+            f"{history_entry.get('unit', '')}_"
+            f"{history_entry.get('at_time', '')}_"
+            f"{str(history_entry.get('start_actions', []))}_"
+            f"{str(history_entry.get('finish_actions', []))}"
+        )
         
         # Remove duplicate if exists
-        history = [h for h in history if f"{h.get('action', '')}_{h.get('time_mode', '')}_{h.get('delay', '')}_{h.get('unit', '')}_{h.get('at_time', '')}" != entry_key]
+        history = [
+            h
+            for h in history
+            if (
+                f"{h.get('time_mode', '')}_"
+                f"{h.get('delay', '')}_"
+                f"{h.get('unit', '')}_"
+                f"{h.get('at_time', '')}_"
+                f"{str(h.get('start_actions', []))}_"
+                f"{str(h.get('finish_actions', []))}"
+            )
+            != entry_key
+        ]
         
         # Add new entry at the beginning
         history.insert(0, history_entry)

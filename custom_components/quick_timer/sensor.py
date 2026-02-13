@@ -23,7 +23,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Quick Timer sensor."""
     coordinator = hass.data[DOMAIN]["coordinator"]
-    async_add_entities([QuickTimerSensor(coordinator)], True)
+    async_add_entities([QuickTimerSensor(coordinator, config_entry)], True)
 
 
 class QuickTimerSensor(SensorEntity):
@@ -33,9 +33,10 @@ class QuickTimerSensor(SensorEntity):
     _attr_name = SENSOR_NAME
     _attr_icon = "mdi:clock-outline"
 
-    def __init__(self, coordinator) -> None:
+    def __init__(self, coordinator, config_entry) -> None:
         """Initialize the sensor."""
         self._coordinator = coordinator
+        self._config_entry = config_entry
         self._attr_unique_id = "quick_timer_monitor"
         self._active_tasks: dict[str, Any] = {}
         self._preferences: dict[str, Any] = {}
@@ -45,36 +46,53 @@ class QuickTimerSensor(SensorEntity):
         """Return the number of active scheduled tasks."""
         return len(self._active_tasks)
 
+    def _parse_presets(self, preset_string: str) -> list[int]:
+        """Parse comma-separated preset string into list of integers."""
+        try:
+            return [int(x.strip()) for x in preset_string.split(",") if x.strip()]
+        except (ValueError, AttributeError):
+            return []
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes with active task details."""
         now = dt_util.now()
         tasks_with_remaining = {}
         
-        for entity_id, task in self._active_tasks.items():
+        for task_id, task in self._active_tasks.items():
             end_time_str = task.get("end_time") or task.get("scheduled_time")
             if end_time_str:
                 try:
                     end_time = dt_util.parse_datetime(end_time_str)
                     if end_time:
                         remaining_seconds = max(0, int((end_time - now).total_seconds()))
-                        tasks_with_remaining[entity_id] = {
+                        tasks_with_remaining[task_id] = {
                             **task,
                             "remaining_seconds": remaining_seconds,
                             "end_timestamp": end_time.timestamp(),
                         }
                     else:
-                        tasks_with_remaining[entity_id] = task
+                        tasks_with_remaining[task_id] = task
                 except (ValueError, TypeError):
-                    tasks_with_remaining[entity_id] = task
+                    tasks_with_remaining[task_id] = task
             else:
-                tasks_with_remaining[entity_id] = task
+                tasks_with_remaining[task_id] = task
+        
+        # Get presets from options
+        options = self._config_entry.options
+        preset_seconds = self._parse_presets(options.get("preset_seconds", "5,10,15,20,30,45"))
+        preset_minutes = self._parse_presets(options.get("preset_minutes", "1,2,3,5,10,15,20,30,45"))
+        preset_hours = self._parse_presets(options.get("preset_hours", "1,2,3,4,6,8,12"))
         
         return {
             "active_tasks": tasks_with_remaining,
             "task_count": len(self._active_tasks),
-            "scheduled_entities": list(self._active_tasks.keys()),
             "preferences": self._preferences,
+            "presets": {
+                "seconds": preset_seconds,
+                "minutes": preset_minutes,
+                "hours": preset_hours,
+            },
         }
 
     @callback
