@@ -543,25 +543,10 @@ class QuickTimerCardEditor extends LitElement {
     };
 
     return html`
-      <div class="editor-row">
-        <div class="hint">
-          Add entity targets that will be scheduled together. Each target can execute <strong>on timer start</strong> (immediately) or <strong>on timer finish</strong> (when countdown ends).
-        </div>
-        ${targets.map((t, i) => renderTarget(t, i))}
-        <button type="button" class="add-target-btn" @click=${() => this._addTarget('finish')}>
-          <ha-icon icon="mdi:plus" style="--mdc-icon-size: 18px;"></ha-icon>
-          Add Target
-        </button>
-      </div>
-
       <!-- Timer Defaults -->
       <div class="editor-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider-color);">
         <label>Name (optional)</label>
         <ha-textfield .value=${this._config.name || ''} @input=${(e) => this._valueChanged('name', e.target.value)} placeholder="Auto from targets"></ha-textfield>
-      </div>
-      <div class="editor-row">
-        <label>Icon</label>
-        <ha-icon-picker .hass=${this.hass} .value=${this._config.icon || ''} @value-changed=${(e) => this._valueChanged('icon', e.detail.value)}></ha-icon-picker>
       </div>
       <div class="inline-row">
         <div class="editor-row">
@@ -593,6 +578,16 @@ class QuickTimerCardEditor extends LitElement {
           <ha-textfield type="time" .value=${this._config.default_at_time || ''} @input=${(e) => this._valueChanged('default_at_time', e.target.value)} placeholder="e.g. 17:30"></ha-textfield>
         </div>
       `}
+      <div class="editor-row">
+        <div class="hint">
+          Add entity targets that will be scheduled together. Each target can execute <strong>on timer start</strong> (immediately) or <strong>on timer finish</strong> (when countdown ends).
+        </div>
+        ${targets.map((t, i) => renderTarget(t, i))}
+        <button type="button" class="add-target-btn" @click=${() => this._addTarget('finish')}>
+          <ha-icon icon="mdi:plus" style="--mdc-icon-size: 18px;"></ha-icon>
+          Add Target
+        </button>
+      </div>
       <div class="inline-row">
         <div class="editor-row switch-row">
           <label>HA Notification</label>
@@ -613,6 +608,10 @@ class QuickTimerCardEditor extends LitElement {
     const colorOption = COLOR_OPTIONS.find(o => o.value === selectedColor) || COLOR_OPTIONS[0];
 
     const appearanceSection = html`
+      <div class="editor-row">
+        <label>Icon</label>
+        <ha-icon-picker .hass=${this.hass} .value=${this._config.icon || ''} @value-changed=${(e) => this._valueChanged('icon', e.detail.value)}></ha-icon-picker>
+      </div>
       <div class="editor-row">
         <label>Icon Color</label>
         <div class="custom-select" id="color-select">
@@ -1242,14 +1241,6 @@ class QuickTimerCard extends LitElement {
             </div>
 
             ${!isAbsolute ? html`
-              <div class="timer-chips">
-                ${presets[this._unit].map(val => html`
-                  <button type="button" class="timer-chip ${this._delay === val ? 'active' : ''}"
-                    @click=${() => { this._delay = val; this._saveToCardConfig(); this.requestUpdate(); }}>
-                    ${val}${getUnitLabel(this._unit, true).charAt(0)}
-                  </button>
-                `)}
-              </div>
               <div class="timer-row">
                 <input type="number" class="timer-input" .value=${String(this._delay)} min="1"
                   @input=${(e) => { const v = parseInt(e.target.value, 10); if (v > 0) { this._delay = v; this._saveToCardConfig(); } }}
@@ -1266,13 +1257,25 @@ class QuickTimerCard extends LitElement {
                   @input=${(e) => { this._atTime = e.target.value; this._saveToCardConfig(); }}>
               </div>
             `}
-
+            <div class="timer-chips">
+              ${presets[this._unit].map(val => html`
+                <button type="button" class="timer-chip ${this._delay === val ? 'active' : ''}"
+                  @click=${() => { this._delay = val; this._saveToCardConfig(); this.requestUpdate(); }}>
+                  ${val}${getUnitLabel(this._unit, true).charAt(0)}
+                </button>
+              `)}
+            </div>
             <div class="timer-notify">
               <button type="button" class="notify-icon-btn ${this._notifyHa ? 'active' : ''}"
                 @click=${() => { this._notifyHa = !this._notifyHa; this._saveToCardConfig(); this.requestUpdate(); }} title="HA Notification">
                 <ha-icon icon="mdi:bell${this._notifyHa ? '' : '-off-outline'}"></ha-icon>
               </button>
+              <button type="button" class="notify-icon-btn ${this._notifyMobile ? 'active' : ''}"
+                @click=${() => { this._notifyMobile = !this._notifyMobile; this._saveToCardConfig(); this.requestUpdate(); }} title="Mobile Notification">
+                <ha-icon icon="mdi:cellphone${this._notifyMobile ? '-message' : ''}"></ha-icon>
+              </button>
             </div>
+            ${this._notifyMobile ? html`
             <div class="editor-row" style="margin-top: 8px;">
               <label style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color);">Mobile Notification Devices</label>
               <ha-selector .hass=${this.hass} .selector=${{ device: { filter: [{ integration: 'mobile_app' }], multiple: true } }} .value=${this._notifyDevices || []} @value-changed=${(e) => { 
@@ -1281,6 +1284,7 @@ class QuickTimerCard extends LitElement {
                 this.requestUpdate(); 
               }}></ha-selector>
             </div>
+            ` : ''}
           </div>
 
           <div class="timer-buttons" style="margin-top: 12px;">
@@ -1387,14 +1391,6 @@ class QuickTimerCard extends LitElement {
               </button>
             </div>
             ${!isAbsolute ? html`
-              <div class="timer-chips">
-                ${presets[this._unit].map(val => html`
-                  <button type="button" class="timer-chip ${this._delay === val ? 'active' : ''}"
-                    @click=${() => { this._delay = val; this._saveToCardConfig(); this.requestUpdate(); }}>
-                    ${val}${getUnitLabel(this._unit, true).charAt(0)}
-                  </button>
-                `)}
-              </div>
               <div class="timer-row">
                 <input type="number" class="timer-input" .value=${String(this._delay)}
                   @input=${(e) => { const v = parseInt(e.target.value, 10); if (v > 0) { this._delay = v; this._saveToCardConfig(); } }}
@@ -1411,16 +1407,30 @@ class QuickTimerCard extends LitElement {
                   @input=${(e) => { this._atTime = e.target.value; this._saveToCardConfig(); }}>
               </div>
             `}
+            <div class="timer-chips">
+              ${presets[this._unit].map(val => html`
+                <button type="button" class="timer-chip ${this._delay === val ? 'active' : ''}"
+                  @click=${() => { this._delay = val; this._saveToCardConfig(); this.requestUpdate(); }}>
+                  ${val}${getUnitLabel(this._unit, true).charAt(0)}
+                </button>
+              `)}
+            </div>
             <div class="timer-notify">
               <button type="button" class="notify-icon-btn ${this._notifyHa ? 'active' : ''}"
                 @click=${() => { this._notifyHa = !this._notifyHa; this._saveToCardConfig(); this.requestUpdate(); }} title="HA Notification">
                 <ha-icon icon="mdi:bell${this._notifyHa ? '' : '-off-outline'}"></ha-icon>
               </button>
+              <button type="button" class="notify-icon-btn ${this._notifyMobile ? 'active' : ''}"
+                @click=${() => { this._notifyMobile = !this._notifyMobile; this._saveToCardConfig(); this.requestUpdate(); }} title="Mobile Notification">
+                <ha-icon icon="mdi:cellphone${this._notifyMobile ? '-message' : ''}"></ha-icon>
+              </button>
             </div>
+            ${this._notifyMobile ? html`
             <div style="margin-top: 8px;">
               <label style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color);">Mobile Notification Devices</label>
               <ha-selector .hass=${this.hass} .selector=${{ device: { filter: [{ integration: 'mobile_app' }], multiple: true } }} .value=${this._notifyDevices || []} @value-changed=${(e) => { this._notifyDevices = e.detail.value || []; this._saveToCardConfig(); this.requestUpdate(); }}></ha-selector>
             </div>
+            ` : ''}
             <div class="timer-buttons">
               <button class="timer-btn timer-btn-primary" @click=${() => { this._saveToCardConfig(); this._startSchedule(); }} ?disabled=${this._loading}>
                 <ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 18px;"></ha-icon>
@@ -1971,6 +1981,12 @@ class QuickTimerDialogInjector {
     let currentTimeMode = initialTimeMode;
     let currentServiceData = {};  // Stores service field values
 
+    const updateDeviceSelectorVisibility = () => {
+      if (deviceSelectorContainer) {
+        deviceSelectorContainer.style.display = notifyMobile ? 'block' : 'none';
+      }
+    };
+
     if (serviceSelect) serviceSelect.value = initialService;
     if (serviceSelectAbs) serviceSelectAbs.value = initialService;
 
@@ -1990,6 +2006,7 @@ class QuickTimerDialogInjector {
         savePrefs();
       });
       deviceSelectorContainer.appendChild(selector);
+      updateDeviceSelectorVisibility();
     }
 
     // Dynamic service fields rendering — uses ha-selector for native HA UX
@@ -2150,7 +2167,7 @@ class QuickTimerDialogInjector {
     };
 
     notifyHaBtn.addEventListener('click', () => { notifyHa = !notifyHa; updateNotifyBtn(notifyHaBtn, notifyHa, 'mdi:bell', 'mdi:bell-off-outline'); savePrefs(); });
-    notifyMobileBtn.addEventListener('click', () => { notifyMobile = !notifyMobile; updateNotifyBtn(notifyMobileBtn, notifyMobile, 'mdi:cellphone-message', 'mdi:cellphone'); savePrefs(); });
+    notifyMobileBtn.addEventListener('click', () => { notifyMobile = !notifyMobile; updateNotifyBtn(notifyMobileBtn, notifyMobile, 'mdi:cellphone-message', 'mdi:cellphone'); updateDeviceSelectorVisibility(); savePrefs(); });
 
     const presetConfig = getPresetsFromSensor(hass);
     const unitLabels = { seconds: 's', minutes: 'm', hours: 'h' };
