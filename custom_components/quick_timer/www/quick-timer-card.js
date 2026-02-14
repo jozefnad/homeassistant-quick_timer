@@ -447,6 +447,11 @@ class QuickTimerCardEditor extends LitElement {
 
   _targetChanged(idx, field, value) {
     const targets = [...(this._config.targets || [])];
+    // If nothing changed, do nothing (prevents resetting data when re-selecting same entity/service)
+    if (targets[idx][field] === value) {
+      return;
+    }
+
     targets[idx] = { ...targets[idx], [field]: value };
     if (field === 'entity' && value && !targets[idx].service) {
       targets[idx].service = getDefaultServiceForEntity(this.hass, value);
@@ -518,10 +523,10 @@ class QuickTimerCardEditor extends LitElement {
               ${Object.entries(targetFields).map(([key, field]) => html`
                 <div style="margin-bottom: 6px;">
                   ${field.selector ? html`
-                    <ha-selector .hass=${this.hass} .selector=${field.selector} .value=${(target.data || {})[key]} .label=${field.name || key}
+                    <ha-selector .hass=${this.hass} .selector=${field.selector} .value=${(target.data || {})[key]} .label=${field.name || key} .required=${field.required === true}
                       @value-changed=${(e) => this._targetDataChanged(globalIdx, key, e.detail.value)}></ha-selector>
                   ` : html`
-                    <ha-textfield .value=${String((target.data || {})[key] ?? '')}
+                    <ha-textfield .value=${String((target.data || {})[key] ?? '')} .required=${field.required === true}
                       @change=${(e) => {
                         const raw = e.target.value;
                         const num = Number(raw);
@@ -544,7 +549,7 @@ class QuickTimerCardEditor extends LitElement {
 
     return html`
       <!-- Timer Defaults -->
-      <div class="editor-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider-color);">
+      <div class="editor-row">
         <label>Name (optional)</label>
         <ha-textfield .value=${this._config.name || ''} @input=${(e) => this._valueChanged('name', e.target.value)} placeholder="Auto from targets"></ha-textfield>
       </div>
@@ -578,7 +583,8 @@ class QuickTimerCardEditor extends LitElement {
           <ha-textfield type="time" .value=${this._config.default_at_time || ''} @input=${(e) => this._valueChanged('default_at_time', e.target.value)} placeholder="e.g. 17:30"></ha-textfield>
         </div>
       `}
-      <div class="editor-row">
+      <div class="editor-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider-color);">
+        <label>Targets and actions</label>
         <div class="hint">
           Add entity targets that will be scheduled together. Each target can execute <strong>on timer start</strong> (immediately) or <strong>on timer finish</strong> (when countdown ends).
         </div>
@@ -1093,10 +1099,9 @@ class QuickTimerCard extends LitElement {
   _getColor() {
     const key = this.config.color || 'state';
     if (key === 'state') {
-      if (this._isScheduled) return 'var(--warning-color, #ff9800)';
-      const info = this._getEntityInfo();
-      if (info.state === 'on') return 'var(--state-light-active-color, var(--amber-color, #ffc107))';
-      return 'var(--state-icon-color, #9e9e9e)';
+      return this._isScheduled 
+        ? 'var(--state-light-active-color, var(--warning-color, #ff9800))' 
+        : 'var(--state-icon-color, #9e9e9e)';
     }
     return COLOR_OPTIONS.find(o => o.value === key)?.color || 'var(--primary-color)';
   }
@@ -1134,8 +1139,6 @@ class QuickTimerCard extends LitElement {
 
   _getInactiveClass() {
     if (this._isScheduled) return '';
-    const info = this._getEntityInfo();
-    if (info.state === 'on') return '';
     const style = this.config.inactive_style || 'dim';
     return style === 'dim' ? 'inactive-dim' : style === 'grayscale' ? 'inactive-grayscale' : '';
   }
