@@ -21,7 +21,7 @@ async def async_register_frontend(hass: HomeAssistant):
     try:
         integration = await async_get_integration(hass, "quick_timer")
         version = integration.version
-    except:
+    except Exception:
         version = "0.0.0"  # Fallback version
         
     timestamp = int(time.time())
@@ -30,24 +30,37 @@ async def async_register_frontend(hass: HomeAssistant):
     # Registration or update of the resource in Lovelace
     lovelace = hass.data.get("lovelace")
     if not lovelace:
+        _LOGGER.debug("Lovelace not available, skipping resource registration")
         return
 
     resources = getattr(lovelace, "resources", None)
-    if resources:
-        installed_resource = None
-        # Check existing resources
-        for res in resources.async_items():
-            if URL_BASE in res["url"]:
-                installed_resource = res
-                break
+    if not resources:
+        _LOGGER.debug("Lovelace resources not available, skipping resource registration")
+        return
 
-        if installed_resource:
-            if installed_resource["url"] != url:
-                _LOGGER.debug("Updating resource to: %s", url)
-                await resources.async_update_item(installed_resource["id"], {"url": url})
-        else:
-            _LOGGER.info("Creating new resource for Quick Timer Card")
+    if not resources.loaded:
+        await resources.async_load()
+        resources.loaded = True
+
+    installed_resource = None
+    # Check existing resources
+    for res in resources.async_items():
+        if URL_BASE in res["url"]:
+            installed_resource = res
+            break
+
+    if installed_resource:
+        if installed_resource["url"] != url:
+            _LOGGER.debug("Updating Quick Timer resource to: %s", url)
+            await resources.async_update_item(
+                installed_resource["id"], {"res_type": "module", "url": url}
+            )
+    else:
+        _LOGGER.info("Creating new Lovelace resource for Quick Timer Card")
+        if getattr(resources, "async_create_item", None):
             await resources.async_create_item({"res_type": "module", "url": url})
+        elif getattr(resources, "data", None) and getattr(resources.data, "append", None):
+            resources.data.append({"type": "module", "url": url})
 
 
 class QuickTimerCardView(HomeAssistantView):
