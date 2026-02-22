@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import re
 from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
@@ -88,6 +89,24 @@ class QuickTimerCardView(HomeAssistantView):
         # Read file in executor (non-blocking)
         try:
             content = await hass.async_add_executor_job(self._read_file, file_path)
+
+            # Try to determine version from integration (fallback to query param)
+            try:
+                integration = await async_get_integration(hass, "quick_timer")
+                file_version = integration.version or "0.0.0"
+            except Exception:
+                # If integration not available, try query param v
+                qv = request.query.get('v')
+                file_version = qv or "0.0.0"
+
+            # Replace CARD_VERSION in JS so frontend reflects integration version
+            try:
+                content = re.sub(r"const\s+CARD_VERSION\s*=\s*'[^']*';",
+                                 f"const CARD_VERSION = '{file_version}';",
+                                 content, count=1)
+            except Exception:
+                _LOGGER.debug("Failed to inject card version into JS; serving original file")
+
             return web.Response(body=content, content_type="application/javascript")
         except Exception as e:
             _LOGGER.error("Error reading file: %s", e)

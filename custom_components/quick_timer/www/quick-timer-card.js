@@ -9,7 +9,6 @@
  *           absolute time support, backend-synced persistence, history presets,
  *           dialog injection with full Quick Timer panel.
  *
- * @version 2.0.0
  * @author Quick Timer
  */
 
@@ -28,7 +27,7 @@ const css = LitElement.prototype.css;
 // Constants
 // ============================================
 
-const CARD_VERSION = '2.0.0';
+const CARD_VERSION = '';
 const TIME_MODE_RELATIVE = 'relative';
 const TIME_MODE_ABSOLUTE = 'absolute';
 const MONITOR_ENTITY = 'sensor.quick_timer_monitor';
@@ -56,32 +55,11 @@ const DEFAULT_CONFIG = {
   notify_devices: [],
 };
 
-const COLOR_OPTIONS = [
-  { value: 'state', label: 'By timer state', color: null },
-  { value: 'primary', label: 'Primary', color: 'var(--primary-color)' },
-  { value: 'accent', label: 'Accent', color: 'var(--accent-color)' },
-  { value: 'disabled', label: 'Disabled', color: 'var(--disabled-color)' },
-  { value: 'red', label: 'Red', color: 'var(--red-color, #f44336)' },
-  { value: 'pink', label: 'Pink', color: 'var(--pink-color, #e91e63)' },
-  { value: 'purple', label: 'Purple', color: 'var(--purple-color, #9c27b0)' },
-  { value: 'deep-purple', label: 'Deep Purple', color: 'var(--deep-purple-color, #673ab7)' },
-  { value: 'indigo', label: 'Indigo', color: 'var(--indigo-color, #3f51b5)' },
-  { value: 'blue', label: 'Blue', color: 'var(--blue-color, #2196f3)' },
-  { value: 'light-blue', label: 'Light Blue', color: 'var(--light-blue-color, #03a9f4)' },
-  { value: 'cyan', label: 'Cyan', color: 'var(--cyan-color, #00bcd4)' },
-  { value: 'teal', label: 'Teal', color: 'var(--teal-color, #009688)' },
-  { value: 'green', label: 'Green', color: 'var(--green-color, #4caf50)' },
-  { value: 'light-green', label: 'Light Green', color: 'var(--light-green-color, #8bc34a)' },
-  { value: 'lime', label: 'Lime', color: 'var(--lime-color, #cddc39)' },
-  { value: 'yellow', label: 'Yellow', color: 'var(--yellow-color, #ffeb3b)' },
-  { value: 'amber', label: 'Amber', color: 'var(--amber-color, #ffc107)' },
-  { value: 'orange', label: 'Orange', color: 'var(--orange-color, #ff9800)' },
-  { value: 'deep-orange', label: 'Deep Orange', color: 'var(--deep-orange-color, #ff5722)' },
-  { value: 'brown', label: 'Brown', color: 'var(--brown-color, #795548)' },
-  { value: 'grey', label: 'Grey', color: 'var(--grey-color, #9e9e9e)' },
-  { value: 'blue-grey', label: 'Blue Grey', color: 'var(--blue-grey-color, #607d8b)' },
-  { value: 'white', label: 'White', color: 'var(--white-color, #ffffff)' },
-];
+// Maps a named HA color to its CSS variable. Returns null for the 'state' pseudo-color.
+function namedColorToCss(colorName) {
+  if (!colorName || colorName === 'state') return null;
+  return `var(--${colorName}-color)`;
+}
 
 const ACTION_TYPES = {
   'toggle-timer': 'Start/Cancel Timer',
@@ -96,6 +74,153 @@ const PRIMARY_INFO_OPTIONS = {
 const SECONDARY_INFO_OPTIONS = {
   timer: 'Timer/Countdown', state: 'Entity State', action: 'Scheduled Action', none: 'Hidden',
 };
+
+// ============================================
+// Internationalization (i18n)
+// ============================================
+
+const TRANSLATIONS = {
+  en: {
+    // Common
+    'schedule': 'Schedule', 'cancel': 'Cancel', 'delay': 'Delay', 'time': 'Time',
+    'quick_timer': 'Quick Timer', 'recent': 'Recent', 'history': 'History',
+    'action': 'Action',
+    // Units
+    'seconds': 'Seconds', 'minutes': 'Minutes', 'hours': 'Hours',
+    'sec': 'sec', 'min': 'min', 'hrs': 'hrs',
+    // Time
+    'ago_format': '{v}{u} ago', 'd': 'd', 'h': 'h', 'm': 'm', 's': 's',
+    // States
+    'on': 'On', 'off': 'Off',
+    // Card
+    'countdown_to_action': 'Countdown to action',
+    'no_active_timers': 'No active timers',
+    'add_at_least_one_target': 'Please add at least one target',
+    'n_targets_configured': '{n} targets configured',
+    'one_entity_scheduled': '1 Entity Scheduled',
+    'n_entities_scheduled': '{n} Entities Scheduled',
+    'n_actions': '{n} actions',
+    'timer': 'Timer', 'in': 'in', 'at': 'at',
+    // Notifications
+    'ha_notification': 'HA Notification', 'mobile_notification': 'Mobile Notification',
+    'mobile_notification_devices': 'Mobile Notification Devices',
+    // Editor sections
+    'targets_and_timer': 'Targets & Timer', 'appearance': 'Appearance', 'interactions': 'Interactions',
+    // Editor fields
+    'name_optional': 'Name (optional)', 'auto_from_targets': 'Auto from targets',
+    'time_mode': 'Time Mode', 'delay_relative': 'Delay (Relative)', 'time_absolute': 'Time (Absolute)',
+    'time_unit': 'Time Unit', 'default_delay': 'Default Delay', 'default_time_hhmm': 'Default Time (HH:MM)',
+    'targets_and_actions': 'Targets and actions',
+    'targets_hint_1': 'Add entity targets that will be scheduled together. Each target can execute',
+    'targets_hint_bold_1': 'on timer start',
+    'targets_hint_2': '(immediately) or',
+    'targets_hint_bold_2': 'on timer finish',
+    'targets_hint_3': '(when countdown ends).',
+    'add_target': 'Add Target',
+    'on_start': 'On Start', 'on_finish': 'On Finish',
+    'exec_on_finish': 'Execute on Finish (when timer ends)',
+    'exec_on_start': 'Execute on Start (immediately)',
+    // Display
+    'display_mode': 'Display Mode', 'compact_tile': 'Compact (Tile)', 'full': 'Full',
+    'show_progress_bar': 'Show Progress Bar', 'show_badge': 'Show Badge',
+    'icon': 'Icon', 'icon_color': 'Icon Color',
+    'primary_info': 'Primary Info', 'secondary_info': 'Secondary Info',
+    'inactive_style': 'Inactive Style',
+    'inactive_none': 'None', 'inactive_dim': 'Dim (opacity)', 'inactive_grayscale': 'Grayscale',
+    'hide_when_empty': 'Hide when empty',
+    // Interactions
+    'tap': 'Tap', 'hold': 'Hold', 'icon_tap': 'Icon Tap',
+    // Action types
+    'action_toggle_timer': 'Start/Cancel Timer', 'action_settings': 'Open Settings', 'action_none': 'No Action',
+    // Primary info options
+    'pi_name': 'Name', 'pi_state': 'Entity State', 'pi_last_changed': 'Last Changed', 'pi_none': 'Hidden',
+    // Secondary info options
+    'si_timer': 'Timer/Countdown', 'si_state': 'Entity State', 'si_action': 'Scheduled Action', 'si_none': 'Hidden',
+    // Overview
+    'quick_timers': 'Quick Timers',
+    // Phase
+    'start': 'start', 'finish': 'finish',
+    // Color
+    'color_auto': 'Auto color (by timer state)',
+    'card_title': 'Card Title',
+  },
+  sk: {
+    // Common
+    'schedule': 'Naplánovať', 'cancel': 'Zrušiť', 'delay': 'Oneskorenie', 'time': 'Čas',
+    'quick_timer': 'Quick Timer', 'recent': 'Nedávne', 'history': 'História',
+    'action': 'Akcia',
+    // Units
+    'seconds': 'Sekundy', 'minutes': 'Minúty', 'hours': 'Hodiny',
+    'sec': 'sek', 'min': 'min', 'hrs': 'hod',
+    // Time
+    'ago_format': 'pred {v}{u}', 'd': 'd', 'h': 'h', 'm': 'm', 's': 's',
+    // States
+    'on': 'Zapnuté', 'off': 'Vypnuté',
+    // Card
+    'countdown_to_action': 'Odpočet do akcie',
+    'no_active_timers': 'Žiadne aktívne časovače',
+    'add_at_least_one_target': 'Pridajte aspoň jeden cieľ',
+    'n_targets_configured': '{n} cieľov nakonfigurovaných',
+    'one_entity_scheduled': '1 entita naplánovaná',
+    'n_entities_scheduled': '{n} entít naplánovaných',
+    'n_actions': '{n} akcií',
+    'timer': 'Časovač', 'in': 'za', 'at': 'o',
+    // Notifications
+    'ha_notification': 'HA upozornenie', 'mobile_notification': 'Mobilné upozornenie',
+    'mobile_notification_devices': 'Zariadenia mobilných upozornení',
+    // Editor sections
+    'targets_and_timer': 'Ciele a časovač', 'appearance': 'Vzhľad', 'interactions': 'Interakcie',
+    // Editor fields
+    'name_optional': 'Názov (voliteľný)', 'auto_from_targets': 'Auto z cieľov',
+    'time_mode': 'Časový režim', 'delay_relative': 'Oneskorenie (Relatívne)', 'time_absolute': 'Čas (Absolútny)',
+    'time_unit': 'Časová jednotka', 'default_delay': 'Predvolené oneskorenie', 'default_time_hhmm': 'Predvolený čas (HH:MM)',
+    'targets_and_actions': 'Ciele a akcie',
+    'targets_hint_1': 'Pridajte ciele entít, ktoré budú naplánované spoločne. Každý cieľ sa môže vykonať',
+    'targets_hint_bold_1': 'pri štarte časovača',
+    'targets_hint_2': '(okamžite) alebo',
+    'targets_hint_bold_2': 'pri skončení časovača',
+    'targets_hint_3': '(keď odpočet skončí).',
+    'add_target': 'Pridať cieľ',
+    'on_start': 'Na štarte', 'on_finish': 'Na konci',
+    'exec_on_finish': 'Vykonať na konci (keď časovač skončí)',
+    'exec_on_start': 'Vykonať na štarte (okamžite)',
+    // Display
+    'display_mode': 'Režim zobrazenia', 'compact_tile': 'Kompaktný (Dlaždica)', 'full': 'Plný',
+    'show_progress_bar': 'Zobraziť priebeh', 'show_badge': 'Zobraziť odznak',
+    'icon': 'Ikona', 'icon_color': 'Farba ikony',
+    'primary_info': 'Primárna info', 'secondary_info': 'Sekundárna info',
+    'inactive_style': 'Neaktívny štýl',
+    'inactive_none': 'Žiadny', 'inactive_dim': 'Stlmený (priehľadnosť)', 'inactive_grayscale': 'Odtiene sivej',
+    'hide_when_empty': 'Skryť keď prázdne',
+    // Interactions
+    'tap': 'Ťuknutie', 'hold': 'Podržanie', 'icon_tap': 'Ťuknutie na ikonu',
+    // Action types
+    'action_toggle_timer': 'Štart/Zrušiť časovač', 'action_settings': 'Otvoriť nastavenia', 'action_none': 'Žiadna akcia',
+    // Primary info options
+    'pi_name': 'Názov', 'pi_state': 'Stav entity', 'pi_last_changed': 'Naposledy zmenené', 'pi_none': 'Skrytý',
+    // Secondary info options
+    'si_timer': 'Časovač/Odpočet', 'si_state': 'Stav entity', 'si_action': 'Naplánovaná akcia', 'si_none': 'Skrytý',
+    // Overview
+    'quick_timers': 'Quick Timers',
+    // Phase
+    'start': 'štart', 'finish': 'koniec',
+    // Color
+    'color_auto': 'Automatická farba (podľa stavu)',
+    'card_title': 'Názov karty',
+  },
+};
+
+let _qtLang = 'en';
+
+function updateLanguage(hass) {
+  if (hass?.language) {
+    _qtLang = TRANSLATIONS[hass.language] ? hass.language : 'en';
+  }
+}
+
+function t(key) {
+  return TRANSLATIONS[_qtLang]?.[key] || TRANSLATIONS['en']?.[key] || key;
+}
 
 // ============================================
 // Helpers
@@ -115,11 +240,45 @@ function getServiceLabel(hass, service) {
   if (!service) return '';
   if (hass && service.includes('.')) {
     const [d, s] = service.split('.', 2);
+    // Try HA's frontend localization first (always returns the properly translated name)
+    if (typeof hass.localize === 'function') {
+      const localized = hass.localize(`component.${d}.services.${s}.name`);
+      if (localized) return localized;
+    }
+    // Fall back to service registry name (may be pre-translated in newer HA)
     const info = hass.services?.[d]?.[s];
     if (info?.name) return info.name;
   }
   const name = service.includes('.') ? service.split('.')[1] : service;
   return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function localizeState(hass, entityId, state) {
+  if (!hass || !state) return state;
+  // Use HA's built-in state formatting (HA 2023.9+)
+  if (typeof hass.formatEntityState === 'function' && entityId) {
+    const stateObj = hass.states?.[entityId];
+    if (stateObj) { try { return hass.formatEntityState(stateObj); } catch (e) { /* fallback */ } }
+  }
+  // Fallback: try hass.localize with known key patterns
+  if (typeof hass.localize === 'function') {
+    const domain = entityId ? entityId.split('.')[0] : '';
+    if (domain) {
+      const loc = hass.localize(`component.${domain}.entity_component._.state.${state}`);
+      if (loc) return loc;
+    }
+    const def = hass.localize(`component._.entity_component._.state.${state}`);
+    if (def) return def;
+  }
+  return state;
+}
+
+function localizeFieldName(hass, domain, service, fieldKey, fallback) {
+  if (hass && typeof hass.localize === 'function') {
+    const loc = hass.localize(`component.${domain}.services.${service}.fields.${fieldKey}.name`);
+    if (loc) return loc;
+  }
+  return fallback || fieldKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function getServiceFields(hass, service, entityId) {
@@ -169,12 +328,29 @@ function getServiceFields(hass, service, entityId) {
   };
 
   processFields(svcDef.fields || {});
+
+  // Localize field names and descriptions
+  const localizeFields = (fields) => {
+    const result = {};
+    for (const [key, field] of Object.entries(fields)) {
+      const locField = { ...field };
+      if (typeof hass.localize === 'function') {
+        const lName = hass.localize(`component.${d}.services.${s}.fields.${key}.name`);
+        if (lName) locField.name = lName;
+        const lDesc = hass.localize(`component.${d}.services.${s}.fields.${key}.description`);
+        if (lDesc) locField.description = lDesc;
+      }
+      result[key] = locField;
+    }
+    return result;
+  };
+
   // If filtering removed ALL fields but there were unfiltered fields, return all
   // (the entity might not report supported_features correctly)
   if (anyFiltered && Object.keys(filtered).length === 0 && Object.keys(allFields).length > 0) {
-    return allFields;
+    return localizeFields(allFields);
   }
-  return filtered;
+  return localizeFields(filtered);
 }
 
 function getServicesForEntity(hass, entityId) {
@@ -182,11 +358,15 @@ function getServicesForEntity(hass, entityId) {
   const domain = entityId.split('.')[0];
   const svc = hass.services?.[domain];
   if (!svc) return [];
-  return Object.entries(svc).filter(([k]) => !k.startsWith('_')).map(([k, v]) => ({
-    value: `${domain}.${k}`,
-    label: v.name || k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-    fields: v.fields || {},
-  }));
+  return Object.entries(svc).filter(([k]) => !k.startsWith('_')).map(([k, v]) => {
+    let label = '';
+    // Try HA's frontend localization first
+    if (typeof hass.localize === 'function') {
+      label = hass.localize(`component.${domain}.services.${k}.name`);
+    }
+    if (!label) label = v.name || k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { value: `${domain}.${k}`, label, fields: v.fields || {} };
+  });
 }
 
 function getDefaultServiceForEntity(hass, entityId) {
@@ -223,15 +403,17 @@ function formatBadgeTime(s) {
 }
 
 function getUnitLabel(u, short = false) {
-  return short ? ({ seconds: 'sec', minutes: 'min', hours: 'hrs' }[u] || 'min') : ({ seconds: 'Seconds', minutes: 'Minutes', hours: 'Hours' }[u] || 'Minutes');
+  return short ? ({ seconds: t('sec'), minutes: t('min'), hours: t('hrs') }[u] || t('min')) : ({ seconds: t('seconds'), minutes: t('minutes'), hours: t('hours') }[u] || t('minutes'));
 }
 
 function getRelativeTime(ts) {
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (diff >= 86400) return `${Math.floor(diff / 86400)}d ago`;
-  if (diff >= 3600) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff >= 60) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff)}s ago`;
+  let v, u;
+  if (diff >= 86400) { v = Math.floor(diff / 86400); u = t('d'); }
+  else if (diff >= 3600) { v = Math.floor(diff / 3600); u = t('h'); }
+  else if (diff >= 60) { v = Math.floor(diff / 60); u = t('m'); }
+  else { v = Math.floor(diff); u = t('s'); }
+  return t('ago_format').replace('{v}', v).replace('{u}', u);
 }
 
 function getCurrentTimeString() {
@@ -268,17 +450,21 @@ function summarizeActions(hass, targets) {
   if (targets.length === 1) {
     return getServiceLabel(hass, targets[0].service);
   }
-  return `${targets.length} actions`;
+  return t('n_actions').replace('{n}', targets.length);
 }
 
 /**
  * Format service data values for display (e.g., "temperature: 22, brightness: 128").
  */
-function formatServiceData(data) {
+function formatServiceData(data, hass, service) {
   if (!data || typeof data !== 'object') return '';
   const entries = Object.entries(data).filter(([k, v]) => k !== 'entity_id' && v !== '' && v !== null && v !== undefined);
   if (entries.length === 0) return '';
-  return entries.map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ');
+  const [domain, svcName] = (service || '').includes('.') ? service.split('.', 2) : ['', ''];
+  return entries.map(([k, v]) => {
+    const label = (domain && svcName) ? localizeFieldName(hass, domain, svcName, k, k.replace(/_/g, ' ')) : k.replace(/_/g, ' ');
+    return `${label}: ${v}`;
+  }).join(', ');
 }
 
 // ============================================
@@ -324,34 +510,12 @@ class QuickTimerCardEditor extends LitElement {
       hass: { type: Object },
       _config: { type: Object },
       _expandedSections: { type: Object },
-      _openDropdown: { type: String },
     };
   }
 
   constructor() {
     super();
     this._expandedSections = { targets: true, appearance: false, interactions: false };
-    this._openDropdown = null;
-    this._boundClose = this._closeDropdownOutside.bind(this);
-  }
-
-  connectedCallback() { super.connectedCallback(); document.addEventListener('click', this._boundClose); }
-  disconnectedCallback() { super.disconnectedCallback(); document.removeEventListener('click', this._boundClose); }
-
-  _closeDropdownOutside(e) {
-    if (this._openDropdown && !e.composedPath().some(el => el.classList?.contains('custom-select'))) {
-      this._openDropdown = null; this.requestUpdate();
-    }
-  }
-
-  _toggleDropdown(type) { this._openDropdown = this._openDropdown === type ? null : type; this.requestUpdate(); }
-
-  _selectOption(type, value) { this._valueChanged(type, value); this._openDropdown = null; this.requestUpdate(); }
-
-  _getColorPreviewStyle(v, opt) {
-    if (v === 'state') return 'background: linear-gradient(135deg, var(--primary-color) 50%, var(--state-icon-color, #9e9e9e) 50%);';
-    if (v === 'disabled') return 'background: var(--disabled-color, #9e9e9e);';
-    return `background: ${opt?.color || 'var(--primary-color)'};`;
   }
 
   static get styles() {
@@ -375,21 +539,7 @@ class QuickTimerCardEditor extends LitElement {
       @media (max-width: 400px) { .inline-row { flex-direction: column; } .inline-row > * { min-width: 100%; } }
       .switch-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
       .switch-row label { margin-bottom: 0; flex: 1; }
-      .custom-select { position: relative; width: 100%; }
-      .custom-select-trigger { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--input-fill-color, var(--secondary-background-color)); border: 1px solid var(--input-ink-color, var(--divider-color)); border-radius: 4px; cursor: pointer; transition: border-color 0.2s; }
-      .custom-select-trigger:hover { border-color: var(--primary-color); }
-      .custom-select-trigger .preview-icon { --mdc-icon-size: 24px; color: var(--primary-color); flex-shrink: 0; }
-      .custom-select-trigger .preview-color { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--divider-color); flex-shrink: 0; }
-      .custom-select-trigger .preview-label { flex: 1; font-size: 14px; color: var(--primary-text-color); }
-      .custom-select-trigger .dropdown-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
-      .custom-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; max-height: 300px; overflow-y: auto; background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; }
-      .custom-select-dropdown.open { display: block; }
-      .custom-select-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; transition: background 0.15s; }
-      .custom-select-item:hover { background: var(--secondary-background-color); }
-      .custom-select-item.selected { background: rgba(var(--rgb-primary-color), 0.1); }
-      .custom-select-item ha-icon { --mdc-icon-size: 20px; color: var(--primary-text-color); }
-      .custom-select-item .color-dot { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--divider-color); }
-      .custom-select-item span { flex: 1; font-size: 14px; }
+
       .action-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--divider-color); flex-wrap: wrap; }
       .action-row:last-child { border-bottom: none; }
       .action-row .action-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
@@ -507,7 +657,7 @@ class QuickTimerCardEditor extends LitElement {
         <div class="target-card">
           <div class="target-header">
             <span class="target-num">#${globalIdx + 1}</span>
-            <span class="target-phase ${isStart ? 'start' : 'finish'}">${isStart ? 'On Start' : 'On Finish'}</span>
+            <span class="target-phase ${isStart ? 'start' : 'finish'}">${isStart ? t('on_start') : t('on_finish')}</span>
             <ha-icon class="target-remove" icon="mdi:delete" @click=${() => this._removeTarget(globalIdx)}></ha-icon>
           </div>
           <div style="margin-bottom: 8px;">
@@ -538,8 +688,8 @@ class QuickTimerCardEditor extends LitElement {
             ` : ''}
             <div style="margin-top: 6px;">
               <ha-select .value=${target.phase || 'finish'} @selected=${(e) => this._targetChanged(globalIdx, 'phase', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition style="width: 100%;">
-                <ha-list-item value="finish">Execute on Finish (when timer ends)</ha-list-item>
-                <ha-list-item value="start">Execute on Start (immediately)</ha-list-item>
+                <ha-list-item value="finish">${t('exec_on_finish')}</ha-list-item>
+                <ha-list-item value="start">${t('exec_on_start')}</ha-list-item>
               </ha-select>
             </div>
           ` : ''}
@@ -550,58 +700,58 @@ class QuickTimerCardEditor extends LitElement {
     return html`
       <!-- Timer Defaults -->
       <div class="editor-row">
-        <label>Name (optional)</label>
-        <ha-textfield .value=${this._config.name || ''} @input=${(e) => this._valueChanged('name', e.target.value)} placeholder="Auto from targets"></ha-textfield>
+        <label>${t('name_optional')}</label>
+        <ha-textfield .value=${this._config.name || ''} @input=${(e) => this._valueChanged('name', e.target.value)} placeholder="${t('auto_from_targets')}"></ha-textfield>
       </div>
       <div class="inline-row">
         <div class="editor-row">
-          <label>Time Mode</label>
+          <label>${t('time_mode')}</label>
           <ha-select .value=${this._config.default_time_mode || TIME_MODE_RELATIVE} @selected=${(e) => this._valueChanged('default_time_mode', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-            <ha-list-item value="relative">Delay (Relative)</ha-list-item>
-            <ha-list-item value="absolute">Time (Absolute)</ha-list-item>
+            <ha-list-item value="relative">${t('delay_relative')}</ha-list-item>
+            <ha-list-item value="absolute">${t('time_absolute')}</ha-list-item>
           </ha-select>
         </div>
         ${(this._config.default_time_mode || TIME_MODE_RELATIVE) === TIME_MODE_RELATIVE ? html`
           <div class="editor-row">
-            <label>Time Unit</label>
+            <label>${t('time_unit')}</label>
             <ha-select .value=${this._config.default_unit || 'minutes'} @selected=${(e) => this._valueChanged('default_unit', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-              <ha-list-item value="seconds">Seconds</ha-list-item>
-              <ha-list-item value="minutes">Minutes</ha-list-item>
-              <ha-list-item value="hours">Hours</ha-list-item>
+              <ha-list-item value="seconds">${t('seconds')}</ha-list-item>
+              <ha-list-item value="minutes">${t('minutes')}</ha-list-item>
+              <ha-list-item value="hours">${t('hours')}</ha-list-item>
             </ha-select>
           </div>
         ` : ''}
       </div>
       ${(this._config.default_time_mode || TIME_MODE_RELATIVE) === TIME_MODE_RELATIVE ? html`
         <div class="editor-row">
-          <label>Default Delay</label>
+          <label>${t('default_delay')}</label>
           <ha-textfield type="number" .value=${String(this._config.default_delay || '')} @change=${(e) => { const v = parseInt(e.target.value, 10); this._valueChanged('default_delay', v > 0 ? v : 15); }} min="1" max="9999"></ha-textfield>
         </div>
       ` : html`
         <div class="editor-row">
-          <label>Default Time (HH:MM)</label>
+          <label>${t('default_time_hhmm')}</label>
           <ha-textfield type="time" .value=${this._config.default_at_time || ''} @input=${(e) => this._valueChanged('default_at_time', e.target.value)} placeholder="e.g. 17:30"></ha-textfield>
         </div>
       `}
       <div class="editor-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider-color);">
-        <label>Targets and actions</label>
+        <label>${t('targets_and_actions')}</label>
         <div class="hint">
-          Add entity targets that will be scheduled together. Each target can execute <strong>on timer start</strong> (immediately) or <strong>on timer finish</strong> (when countdown ends).
+          ${t('targets_hint_1')} <strong>${t('targets_hint_bold_1')}</strong> ${t('targets_hint_2')} <strong>${t('targets_hint_bold_2')}</strong> ${t('targets_hint_3')}
         </div>
-        ${targets.map((t, i) => renderTarget(t, i))}
+        ${targets.map((tgt, i) => renderTarget(tgt, i))}
         <button type="button" class="add-target-btn" @click=${() => this._addTarget('finish')}>
           <ha-icon icon="mdi:plus" style="--mdc-icon-size: 18px;"></ha-icon>
-          Add Target
+          ${t('add_target')}
         </button>
       </div>
       <div class="inline-row">
         <div class="editor-row switch-row">
-          <label>HA Notification</label>
+          <label>${t('ha_notification')}</label>
           <ha-switch .checked=${this._config.notify_ha === true} @change=${(e) => this._valueChanged('notify_ha', e.target.checked)}></ha-switch>
         </div>
       </div>
       <div class="editor-row">
-        <label>Mobile Notification Devices</label>
+        <label>${t('mobile_notification_devices')}</label>
         <ha-selector .hass=${this.hass} .selector=${{ device: { filter: [{ integration: 'mobile_app' }], multiple: true } }} .value=${this._config.notify_devices || []} @value-changed=${(e) => this._valueChanged('notify_devices', e.detail.value || [])}></ha-selector>
       </div>
     `;
@@ -609,68 +759,60 @@ class QuickTimerCardEditor extends LitElement {
 
   render() {
     if (!this.hass || !this._config) return html``;
-
-    const selectedColor = this._config.color || 'state';
-    const colorOption = COLOR_OPTIONS.find(o => o.value === selectedColor) || COLOR_OPTIONS[0];
+    updateLanguage(this.hass);
 
     const appearanceSection = html`
       <div class="editor-row">
-        <label>Display Mode</label>
+        <label>${t('display_mode')}</label>
         <ha-select .value=${this._config.mode || 'compact'} @selected=${(e) => this._valueChanged('mode', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          <ha-list-item value="compact">Compact (Tile)</ha-list-item>
-          <ha-list-item value="full">Full</ha-list-item>
+          <ha-list-item value="compact">${t('compact_tile')}</ha-list-item>
+          <ha-list-item value="full">${t('full')}</ha-list-item>
         </ha-select>
       </div>
       <div class="inline-row">
         <div class="editor-row" style="margin-top: 8px;">
-          <ha-formfield label="Show Progress Bar">
+          <ha-formfield label="${t('show_progress_bar')}">
             <ha-switch .checked=${this._config.show_progress_bar === true} @change=${(e) => this._valueChanged('show_progress_bar', e.target.checked)}></ha-switch>
           </ha-formfield>
         </div>
-        <div class="editor-row"><ha-formfield label="Show Badge"><ha-switch .checked=${this._config.show_badge !== false} @change=${(e) => this._valueChanged('show_badge', e.target.checked)}></ha-switch></ha-formfield></div>
+        <div class="editor-row"><ha-formfield label="${t('show_badge')}"><ha-switch .checked=${this._config.show_badge !== false} @change=${(e) => this._valueChanged('show_badge', e.target.checked)}></ha-switch></ha-formfield></div>
       </div>
       <div class="editor-row">
-        <label>Icon</label>
+        <label>${t('icon')}</label>
         <ha-icon-picker .hass=${this.hass} .value=${this._config.icon || ''} @value-changed=${(e) => this._valueChanged('icon', e.detail.value)}></ha-icon-picker>
       </div>
       <div class="editor-row">
-        <label>Icon Color</label>
-        <div class="custom-select" id="color-select">
-          <div class="custom-select-trigger" @click=${() => this._toggleDropdown('color')}>
-            <div class="preview-color" style="${this._getColorPreviewStyle(selectedColor, colorOption)}"></div>
-            <span class="preview-label">${colorOption.label}</span>
-            <ha-icon class="dropdown-icon" icon="mdi:chevron-down"></ha-icon>
-          </div>
-          <div class="custom-select-dropdown ${this._openDropdown === 'color' ? 'open' : ''}">
-            ${COLOR_OPTIONS.map(opt => html`
-              <div class="custom-select-item ${opt.value === selectedColor ? 'selected' : ''}" @click=${() => this._selectOption('color', opt.value)}>
-                <div class="color-dot" style="${this._getColorPreviewStyle(opt.value, opt)}"></div>
-                <span>${opt.label}</span>
-              </div>
-            `)}
-          </div>
+        <label>${t('icon_color')}</label>
+        <div class="switch-row" style="margin-bottom: 8px;">
+          <label style="text-transform: none; font-size: 14px; font-weight: normal;">${t('color_auto')}</label>
+          <ha-switch .checked=${(this._config.color || 'state') === 'state'}
+            @change=${(e) => this._valueChanged('color', e.target.checked ? 'state' : 'primary')}></ha-switch>
         </div>
+        ${(this._config.color || 'state') !== 'state' ? html`
+          <ha-selector .hass=${this.hass} .selector=${{ "ui-color": {} }} .value=${this._config.color}
+            @value-changed=${(e) => this._valueChanged('color', e.detail.value)}></ha-selector>
+        ` : ''}
       </div>
       <div class="inline-row">
         <div class="editor-row">
-          <label>Primary Info</label>
+          <label>${t('primary_info')}</label>
           <ha-select .value=${this._config.primary_info || 'name'} @selected=${(e) => this._valueChanged('primary_info', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-            ${Object.entries(PRIMARY_INFO_OPTIONS).map(([k, v]) => html`<ha-list-item value="${k}">${v}</ha-list-item>`)}
+            ${Object.keys(PRIMARY_INFO_OPTIONS).map(k => html`<ha-list-item value="${k}">${t('pi_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
           </ha-select>
         </div>
         <div class="editor-row">
-          <label>Secondary Info</label>
+          <label>${t('secondary_info')}</label>
           <ha-select .value=${this._config.secondary_info || 'timer'} @selected=${(e) => this._valueChanged('secondary_info', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-            ${Object.entries(SECONDARY_INFO_OPTIONS).map(([k, v]) => html`<ha-list-item value="${k}">${v}</ha-list-item>`)}
+            ${Object.keys(SECONDARY_INFO_OPTIONS).map(k => html`<ha-list-item value="${k}">${t('si_' + k)}</ha-list-item>`)}
           </ha-select>
         </div>
       </div>
       <div class="editor-row">
-        <label>Inactive Style</label>
+        <label>${t('inactive_style')}</label>
         <ha-select .value=${this._config.inactive_style || 'dim'} @selected=${(e) => this._valueChanged('inactive_style', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          <ha-list-item value="none">None</ha-list-item>
-          <ha-list-item value="dim">Dim (opacity)</ha-list-item>
-          <ha-list-item value="grayscale">Grayscale</ha-list-item>
+          <ha-list-item value="none">${t('inactive_none')}</ha-list-item>
+          <ha-list-item value="dim">${t('inactive_dim')}</ha-list-item>
+          <ha-list-item value="grayscale">${t('inactive_grayscale')}</ha-list-item>
         </ha-select>
       </div>
     `;
@@ -678,32 +820,32 @@ class QuickTimerCardEditor extends LitElement {
     const interactionsSection = html`
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:gesture-tap"></ha-icon>
-        <span class="action-label">Tap</span>
+        <span class="action-label">${t('tap')}</span>
         <ha-select .value=${this._config.tap_action?.action || 'toggle-timer'} @selected=${(e) => this._actionChanged('tap_action', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          ${Object.entries(ACTION_TYPES).map(([k, v]) => html`<ha-list-item value="${k}">${v}</ha-list-item>`)}
+          ${Object.keys(ACTION_TYPES).map(k => html`<ha-list-item value="${k}">${t('action_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
         </ha-select>
       </div>
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:gesture-tap-hold"></ha-icon>
-        <span class="action-label">Hold</span>
+        <span class="action-label">${t('hold')}</span>
         <ha-select .value=${this._config.hold_action?.action || 'settings'} @selected=${(e) => this._actionChanged('hold_action', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          ${Object.entries(ACTION_TYPES).map(([k, v]) => html`<ha-list-item value="${k}">${v}</ha-list-item>`)}
+          ${Object.keys(ACTION_TYPES).map(k => html`<ha-list-item value="${k}">${t('action_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
         </ha-select>
       </div>
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:circle-outline"></ha-icon>
-        <span class="action-label">Icon Tap</span>
+        <span class="action-label">${t('icon_tap')}</span>
         <ha-select .value=${this._config.icon_tap_action?.action || 'settings'} @selected=${(e) => this._actionChanged('icon_tap_action', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          ${Object.entries(ACTION_TYPES).map(([k, v]) => html`<ha-list-item value="${k}">${v}</ha-list-item>`)}
+          ${Object.keys(ACTION_TYPES).map(k => html`<ha-list-item value="${k}">${t('action_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
         </ha-select>
       </div>
     `;
 
     return html`
       <div class="editor-container">
-        ${this._renderSection('targets', 'mdi:target', 'Targets & Timer', this._renderTargetsSection())}
-        ${this._renderSection('appearance', 'mdi:palette', 'Appearance', appearanceSection)}
-        ${this._renderSection('interactions', 'mdi:gesture-tap', 'Interactions', interactionsSection)}
+        ${this._renderSection('targets', 'mdi:target', t('targets_and_timer'), this._renderTargetsSection())}
+        ${this._renderSection('appearance', 'mdi:palette', t('appearance'), appearanceSection)}
+        ${this._renderSection('interactions', 'mdi:gesture-tap', t('interactions'), interactionsSection)}
       </div>
     `;
   }
@@ -879,7 +1021,7 @@ class QuickTimerCard extends LitElement {
   }
 
   setConfig(config) {
-    if (!(config.targets && config.targets.length > 0) && !config.entity) throw new Error('Please add at least one target');
+    if (!(config.targets && config.targets.length > 0) && !config.entity) throw new Error(t('add_at_least_one_target'));
     this.config = { ...DEFAULT_CONFIG, ...config };
     // Auto-generate and persist card_id if missing
     if (!this.config.card_id) {
@@ -931,6 +1073,7 @@ class QuickTimerCard extends LitElement {
 
   updated(changedProperties) {
     if (changedProperties.has('hass')) {
+      updateLanguage(this.hass);
       this._checkScheduledTask();
       this._updateCountdown();
       this._loadHistory();
@@ -1134,9 +1277,9 @@ class QuickTimerCard extends LitElement {
 
     // Multiple targets
     if (targets.length > 1) {
-      const valid = targets.filter(t => t.entity).length;
+      const valid = targets.filter(tgt => tgt.entity).length;
       return {
-        name: `${valid} ${valid === 1 ? 'Entity' : 'Entities'} Scheduled`,
+        name: valid === 1 ? t('one_entity_scheduled') : t('n_entities_scheduled').replace('{n}', valid),
         state: 'group', icon: this.config.icon || 'mdi:timer-outline',
         lastChanged: null, attributes: {},
       };
@@ -1144,7 +1287,7 @@ class QuickTimerCard extends LitElement {
 
     // Legacy single entity
     const entity = this.hass?.states?.[this.config.entity];
-    if (!entity) return { name: this.config.entity || 'Quick Timer', state: 'unavailable', icon: 'mdi:help-circle', lastChanged: null, attributes: {} };
+    if (!entity) return { name: this.config.entity || t('quick_timer'), state: 'unavailable', icon: 'mdi:help-circle', lastChanged: null, attributes: {} };
     return {
       name: entity.attributes?.friendly_name || this.config.entity,
       state: entity.state,
@@ -1160,14 +1303,14 @@ class QuickTimerCard extends LitElement {
         ? 'var(--state-light-active-color, var(--warning-color, #ff9800))' 
         : 'var(--state-icon-color, #9e9e9e)';
     }
-    return COLOR_OPTIONS.find(o => o.value === key)?.color || 'var(--primary-color)';
+    return namedColorToCss(key) || 'var(--primary-color)';
   }
 
   _getPrimaryInfo() {
     const info = this._getEntityInfo();
     switch (this.config.primary_info) {
       case 'name': return info.name;
-      case 'state': return info.state === 'on' ? 'On' : info.state === 'off' ? 'Off' : info.state;
+      case 'state': return localizeState(this.hass, this._getFirstEntity(), info.state);
       case 'last-changed': return info.lastChanged ? getRelativeTime(info.lastChanged) : '';
       case 'none': return '';
       default: return info.name;
@@ -1176,21 +1319,21 @@ class QuickTimerCard extends LitElement {
 
   _getSecondaryInfo() {
     const targets = this.config.targets || [];
-    const finishTargets = targets.filter(t => t.phase !== 'start');
+    const finishTargets = targets.filter(tgt => tgt.phase !== 'start');
     const label = summarizeActions(this.hass, finishTargets);
 
-    if (this._isScheduled) return html`<span class="highlight">${label || 'Timer'}</span> in ${formatCountdownShort(this._remainingSeconds)}`;
+    if (this._isScheduled) return html`<span class="highlight">${label || t('timer')}</span> ${t('in')} ${formatCountdownShort(this._remainingSeconds)}`;
 
     switch (this.config.secondary_info) {
       case 'timer':
-        if (this._timeMode === TIME_MODE_ABSOLUTE) return html`<span class="highlight">${label || 'Timer'}</span> at ${this._atTime}`;
-        return html`<span class="highlight">${label || 'Timer'}</span> in ${this._delay} ${getUnitLabel(this._unit, true)}`;
-      case 'state': { const info = this._getEntityInfo(); return info.state === 'on' ? 'On' : info.state === 'off' ? 'Off' : info.state; }
+        if (this._timeMode === TIME_MODE_ABSOLUTE) return html`<span class="highlight">${label || t('timer')}</span> ${t('at')} ${this._atTime}`;
+        return html`<span class="highlight">${label || t('timer')}</span> ${t('in')} ${this._delay} ${getUnitLabel(this._unit, true)}`;
+      case 'state': { const info = this._getEntityInfo(); return localizeState(this.hass, this._getFirstEntity(), info.state); }
       case 'action': return label;
       case 'none': return '';
       default:
-        if (this._timeMode === TIME_MODE_ABSOLUTE) return html`<span class="highlight">${label || 'Timer'}</span> at ${this._atTime}`;
-        return html`<span class="highlight">${label || 'Timer'}</span> in ${this._delay} ${getUnitLabel(this._unit, true)}`;
+        if (this._timeMode === TIME_MODE_ABSOLUTE) return html`<span class="highlight">${label || t('timer')}</span> ${t('at')} ${this._atTime}`;
+        return html`<span class="highlight">${label || t('timer')}</span> ${t('in')} ${this._delay} ${getUnitLabel(this._unit, true)}`;
     }
   }
 
@@ -1222,10 +1365,10 @@ class QuickTimerCard extends LitElement {
   _formatHistoryEntry(entry) {
     const svcLabel = entry.finish_actions?.[0]?.service ? getServiceLabel(this.hass, entry.finish_actions[0].service)
                    : entry.service ? getServiceLabel(this.hass, entry.service)
-                   : 'Action';
-    if (entry.time_mode === TIME_MODE_ABSOLUTE) return `${svcLabel} at ${entry.at_time}`;
-    const u = { seconds: 's', minutes: 'm', hours: 'h' }[entry.unit] || 'm';
-    return `${svcLabel} in ${entry.delay}${u}`;
+                   : t('action');
+    if (entry.time_mode === TIME_MODE_ABSOLUTE) return `${svcLabel} ${t('at')} ${entry.at_time}`;
+    const u = { seconds: t('sec'), minutes: t('min'), hours: t('hrs') }[entry.unit] || t('min');
+    return `${svcLabel} ${t('in')} ${entry.delay}${u}`;
   }
 
   _applyHistoryEntry(entry) {
@@ -1257,18 +1400,18 @@ class QuickTimerCard extends LitElement {
             <ha-icon icon="${info.icon}"></ha-icon>
             <div class="title-container">
               <h3>${info.name}</h3>
-              <div class="subtitle">${targets.length > 0 ? `${targets.length} targets configured` : info.state}</div>
+              <div class="subtitle">${targets.length > 0 ? t('n_targets_configured').replace('{n}', targets.length) : localizeState(this.hass, this._getFirstEntity(), info.state)}</div>
             </div>
             ${this._history.length > 0 ? html`
               <ha-icon class="history-toggle ${this._showHistory ? 'active' : ''}" icon="mdi:history"
-                @click=${() => { this._showHistory = !this._showHistory; this.requestUpdate(); }} title="History"></ha-icon>
+                @click=${() => { this._showHistory = !this._showHistory; this.requestUpdate(); }} title="${t('history')}"></ha-icon>
             ` : ''}
             <ha-icon class="settings-close" icon="mdi:close" @click=${this._closeSettings}></ha-icon>
           </div>
 
           ${this._showHistory && this._history.length > 0 ? html`
             <div class="history-section">
-              <div class="history-title">Recent</div>
+              <div class="history-title">${t('recent')}</div>
               <div class="history-items">
                 ${this._history.slice(0, 3).map(e => html`<button class="history-chip" @click=${() => this._applyHistoryEntry(e)}>${this._formatHistoryEntry(e)}</button>`)}
               </div>
@@ -1277,12 +1420,12 @@ class QuickTimerCard extends LitElement {
 
           ${targets.length > 0 ? html`
             <div class="target-summary">
-              ${targets.map(t => { const dataStr = formatServiceData(t.data); return html`
+              ${targets.map(tgt => { const dataStr = formatServiceData(tgt.data, this.hass, tgt.service); return html`
                 <div class="target-summary-item">
                   <ha-icon icon="mdi:target"></ha-icon>
-                  <span style="flex:1; font-size: 13px;">${this.hass?.states?.[t.entity]?.attributes?.friendly_name || t.entity}</span>
-                  <span class="phase-badge ${t.phase === 'start' ? 'start' : 'finish'}">${t.phase === 'start' ? 'start' : 'finish'}</span>
-                  <span style="font-size: 11px; color: var(--secondary-text-color);">${getServiceLabel(this.hass, t.service)}${dataStr ? ` (${dataStr})` : ''}</span>
+                  <span style="flex:1; font-size: 13px;">${this.hass?.states?.[tgt.entity]?.attributes?.friendly_name || tgt.entity}</span>
+                  <span class="phase-badge ${tgt.phase === 'start' ? 'start' : 'finish'}">${tgt.phase === 'start' ? t('start') : t('finish')}</span>
+                  <span style="font-size: 11px; color: var(--secondary-text-color);">${getServiceLabel(this.hass, tgt.service)}${dataStr ? ` (${dataStr})` : ''}</span>
                 </div>
               `; })}
             </div>
@@ -1292,11 +1435,11 @@ class QuickTimerCard extends LitElement {
             <div class="timer-mode-row">
               <button type="button" class="mode-btn ${!isAbsolute ? 'active' : ''}"
                 @click=${() => { this._timeMode = TIME_MODE_RELATIVE; this._saveToCardConfig(); this.requestUpdate(); }}>
-                <ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 16px;"></ha-icon> Delay
+                <ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 16px;"></ha-icon> ${t('delay')}
               </button>
               <button type="button" class="mode-btn ${isAbsolute ? 'active' : ''}"
                 @click=${() => { this._timeMode = TIME_MODE_ABSOLUTE; this._saveToCardConfig(); this.requestUpdate(); }}>
-                <ha-icon icon="mdi:clock-outline" style="--mdc-icon-size: 16px;"></ha-icon> Time
+                <ha-icon icon="mdi:clock-outline" style="--mdc-icon-size: 16px;"></ha-icon> ${t('time')}
               </button>
             </div>
 
@@ -1306,9 +1449,9 @@ class QuickTimerCard extends LitElement {
                   @input=${(e) => { const v = parseInt(e.target.value, 10); if (v > 0) { this._delay = v; this._saveToCardConfig(); } }}
                   @change=${(e) => { const v = parseInt(e.target.value, 10); this._delay = v > 0 ? v : 1; e.target.value = String(this._delay); this._saveToCardConfig(); }}>
                 <select class="timer-select" @change=${(e) => { this._unit = e.target.value; this._saveToCardConfig(); this.requestUpdate(); }}>
-                  <option value="seconds" ?selected=${this._unit === 'seconds'}>Seconds</option>
-                  <option value="minutes" ?selected=${this._unit === 'minutes'}>Minutes</option>
-                  <option value="hours" ?selected=${this._unit === 'hours'}>Hours</option>
+                  <option value="seconds" ?selected=${this._unit === 'seconds'}>${t('seconds')}</option>
+                  <option value="minutes" ?selected=${this._unit === 'minutes'}>${t('minutes')}</option>
+                  <option value="hours" ?selected=${this._unit === 'hours'}>${t('hours')}</option>
                 </select>
               </div>
             ` : html`
@@ -1327,17 +1470,17 @@ class QuickTimerCard extends LitElement {
             </div>
             <div class="timer-notify">
               <button type="button" class="notify-icon-btn ${this._notifyHa ? 'active' : ''}"
-                @click=${() => { this._notifyHa = !this._notifyHa; this._saveToCardConfig(); this.requestUpdate(); }} title="HA Notification">
+                @click=${() => { this._notifyHa = !this._notifyHa; this._saveToCardConfig(); this.requestUpdate(); }} title="${t('ha_notification')}">
                 <ha-icon icon="mdi:bell${this._notifyHa ? '' : '-off-outline'}"></ha-icon>
               </button>
               <button type="button" class="notify-icon-btn ${this._notifyMobile ? 'active' : ''}"
-                @click=${() => { this._notifyMobile = !this._notifyMobile; this._saveToCardConfig(); this.requestUpdate(); }} title="Mobile Notification">
+                @click=${() => { this._notifyMobile = !this._notifyMobile; this._saveToCardConfig(); this.requestUpdate(); }} title="${t('mobile_notification')}">
                 <ha-icon icon="mdi:cellphone${this._notifyMobile ? '-message' : ''}"></ha-icon>
               </button>
             </div>
             ${this._notifyMobile ? html`
             <div class="editor-row" style="margin-top: 8px;">
-              <label style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color);">Mobile Notification Devices</label>
+              <label style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color);">${t('mobile_notification_devices')}</label>
               <ha-selector .hass=${this.hass} .selector=${{ device: { filter: [{ integration: 'mobile_app' }], multiple: true } }} .value=${this._notifyDevices || []} @value-changed=${(e) => { 
                 this._notifyDevices = e.detail.value || []; 
                 this._saveToCardConfig(); 
@@ -1350,7 +1493,7 @@ class QuickTimerCard extends LitElement {
           <div class="timer-buttons" style="margin-top: 12px;">
             <button class="timer-btn timer-btn-primary" @click=${() => { this._saveToCardConfig(); this._startSchedule(); this._closeSettings(); }} ?disabled=${this._loading}>
               <ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 16px;"></ha-icon>
-              ${this._loading ? '...' : 'Schedule'}
+              ${this._loading ? '...' : t('schedule')}
             </button>
           </div>
         </div>
@@ -1400,38 +1543,38 @@ class QuickTimerCard extends LitElement {
     const presets = getPresetsFromSensor(this.hass);
     const isAbsolute = this._timeMode === TIME_MODE_ABSOLUTE;
     const targets = this.config.targets || [];
-    const finishTargets = targets.filter(t => t.phase !== 'start');
+    const finishTargets = targets.filter(tgt => tgt.phase !== 'start');
     const displayLabel = summarizeActions(this.hass, finishTargets);
 
     return html`
       <ha-card class="full" style="--icon-color: ${color};">
         <div class="header">
           <ha-icon icon="${info.icon}"></ha-icon>
-          <h2>${info.name || 'Quick Timer'}</h2>
+          <h2>${info.name || t('quick_timer')}</h2>
           ${this._history.length > 0 ? html`
             <ha-icon class="history-toggle ${this._showHistory ? 'active' : ''}" icon="mdi:history"
-              @click=${() => { this._showHistory = !this._showHistory; this.requestUpdate(); }} title="History"></ha-icon>
+              @click=${() => { this._showHistory = !this._showHistory; this.requestUpdate(); }} title="${t('history')}"></ha-icon>
           ` : ''}
         </div>
 
         ${targets.length > 0 ? html`
           <div class="target-summary">
-            ${targets.map(t => { const dataStr = formatServiceData(t.data); return html`
+            ${targets.map(tgt => { const dataStr = formatServiceData(tgt.data, this.hass, tgt.service); return html`
               <div class="target-summary-item">
                 <ha-icon icon="mdi:target"></ha-icon>
-                <span style="flex:1;">${this.hass?.states?.[t.entity]?.attributes?.friendly_name || t.entity}</span>
-                <span class="phase-badge ${t.phase === 'start' ? 'start' : 'finish'}">${t.phase === 'start' ? 'start' : 'finish'}</span>
-                <span style="font-size: 11px; color: var(--secondary-text-color);">${getServiceLabel(this.hass, t.service)}${dataStr ? ` (${dataStr})` : ''}</span>
+                <span style="flex:1;">${this.hass?.states?.[tgt.entity]?.attributes?.friendly_name || tgt.entity}</span>
+                <span class="phase-badge ${tgt.phase === 'start' ? 'start' : 'finish'}">${tgt.phase === 'start' ? t('start') : t('finish')}</span>
+                <span style="font-size: 11px; color: var(--secondary-text-color);">${getServiceLabel(this.hass, tgt.service)}${dataStr ? ` (${dataStr})` : ''}</span>
               </div>
             `; })}
           </div>
         ` : html`
-          <div class="entity-name">${info.name} <span class="entity-state ${info.state}">${info.state}</span></div>
+          <div class="entity-name">${info.name} <span class="entity-state ${info.state}">${localizeState(this.hass, this._getFirstEntity(), info.state)}</span></div>
         `}
 
         ${this._showHistory && this._history.length > 0 ? html`
           <div class="history-section">
-            <div class="history-title">Recent</div>
+            <div class="history-title">${t('recent')}</div>
             <div class="history-items">
               ${this._history.slice(0, 3).map(e => html`<button class="history-chip" @click=${() => this._applyHistoryEntry(e)}>${this._formatHistoryEntry(e)}</button>`)}
             </div>
@@ -1442,22 +1585,22 @@ class QuickTimerCard extends LitElement {
           <div class="countdown-container">
             <ha-icon class="countdown-icon" icon="mdi:timer-sand"></ha-icon>
             <div class="countdown-info">
-              <div class="countdown-label">Countdown to action</div>
+              <div class="countdown-label">${t('countdown_to_action')}</div>
               <div class="countdown-time">${formatCountdown(this._remainingSeconds)}</div>
             </div>
             <div class="countdown-action">${displayLabel}</div>
-            <button class="countdown-cancel-btn" @click=${() => this._cancelSchedule()} ?disabled=${this._loading}>${this._loading ? '...' : 'Cancel'}</button>
+            <button class="countdown-cancel-btn" @click=${() => this._cancelSchedule()} ?disabled=${this._loading}>${this._loading ? '...' : t('cancel')}</button>
           </div>
         ` : html`
           <div class="timer-controls">
             <div class="timer-mode-row">
               <button type="button" class="mode-btn ${!isAbsolute ? 'active' : ''}"
                 @click=${() => { this._timeMode = TIME_MODE_RELATIVE; this._saveToCardConfig(); this.requestUpdate(); }}>
-                <ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 16px;"></ha-icon> Delay
+                <ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 16px;"></ha-icon> ${t('delay')}
               </button>
               <button type="button" class="mode-btn ${isAbsolute ? 'active' : ''}"
                 @click=${() => { this._timeMode = TIME_MODE_ABSOLUTE; this._saveToCardConfig(); this.requestUpdate(); }}>
-                <ha-icon icon="mdi:clock-outline" style="--mdc-icon-size: 16px;"></ha-icon> Time
+                <ha-icon icon="mdi:clock-outline" style="--mdc-icon-size: 16px;"></ha-icon> ${t('time')}
               </button>
             </div>
             ${!isAbsolute ? html`
@@ -1466,9 +1609,9 @@ class QuickTimerCard extends LitElement {
                   @input=${(e) => { const v = parseInt(e.target.value, 10); if (v > 0) { this._delay = v; this._saveToCardConfig(); } }}
                   @change=${(e) => { const v = parseInt(e.target.value, 10); this._delay = v > 0 ? v : 1; e.target.value = String(this._delay); this._saveToCardConfig(); }} min="1">
                 <select class="timer-select" @change=${(e) => { this._unit = e.target.value; this._saveToCardConfig(); this.requestUpdate(); }}>
-                  <option value="seconds" ?selected=${this._unit === 'seconds'}>Seconds</option>
-                  <option value="minutes" ?selected=${this._unit === 'minutes'}>Minutes</option>
-                  <option value="hours" ?selected=${this._unit === 'hours'}>Hours</option>
+                  <option value="seconds" ?selected=${this._unit === 'seconds'}>${t('seconds')}</option>
+                  <option value="minutes" ?selected=${this._unit === 'minutes'}>${t('minutes')}</option>
+                  <option value="hours" ?selected=${this._unit === 'hours'}>${t('hours')}</option>
                 </select>
               </div>
             ` : html`
@@ -1487,24 +1630,24 @@ class QuickTimerCard extends LitElement {
             </div>
             <div class="timer-notify">
               <button type="button" class="notify-icon-btn ${this._notifyHa ? 'active' : ''}"
-                @click=${() => { this._notifyHa = !this._notifyHa; this._saveToCardConfig(); this.requestUpdate(); }} title="HA Notification">
+                @click=${() => { this._notifyHa = !this._notifyHa; this._saveToCardConfig(); this.requestUpdate(); }} title="${t('ha_notification')}">
                 <ha-icon icon="mdi:bell${this._notifyHa ? '' : '-off-outline'}"></ha-icon>
               </button>
               <button type="button" class="notify-icon-btn ${this._notifyMobile ? 'active' : ''}"
-                @click=${() => { this._notifyMobile = !this._notifyMobile; this._saveToCardConfig(); this.requestUpdate(); }} title="Mobile Notification">
+                @click=${() => { this._notifyMobile = !this._notifyMobile; this._saveToCardConfig(); this.requestUpdate(); }} title="${t('mobile_notification')}">
                 <ha-icon icon="mdi:cellphone${this._notifyMobile ? '-message' : ''}"></ha-icon>
               </button>
             </div>
             ${this._notifyMobile ? html`
             <div style="margin-top: 8px;">
-              <label style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color);">Mobile Notification Devices</label>
+              <label style="display: block; margin-bottom: 4px; font-size: 13px; color: var(--secondary-text-color);">${t('mobile_notification_devices')}</label>
               <ha-selector .hass=${this.hass} .selector=${{ device: { filter: [{ integration: 'mobile_app' }], multiple: true } }} .value=${this._notifyDevices || []} @value-changed=${(e) => { this._notifyDevices = e.detail.value || []; this._saveToCardConfig(); this.requestUpdate(); }}></ha-selector>
             </div>
             ` : ''}
             <div class="timer-buttons">
               <button class="timer-btn timer-btn-primary" @click=${() => { this._saveToCardConfig(); this._startSchedule(); }} ?disabled=${this._loading}>
                 <ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 18px;"></ha-icon>
-                ${this._loading ? '...' : 'Schedule'}
+                ${this._loading ? '...' : t('schedule')}
               </button>
             </div>
           </div>
@@ -1522,6 +1665,62 @@ class QuickTimerCard extends LitElement {
 }
 
 customElements.define('quick-timer-card', QuickTimerCard);
+
+// ============================================
+// Quick Timer Overview Card Editor
+// ============================================
+
+class QuickTimerOverviewCardEditor extends LitElement {
+  static get properties() {
+    return { hass: { type: Object }, _config: { type: Object } };
+  }
+
+  setConfig(config) { this._config = config || {}; }
+
+  _fireConfigChanged() {
+    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true }));
+  }
+
+  _valueChanged(key, value) {
+    this._config = { ...this._config, [key]: value };
+    this._fireConfigChanged();
+  }
+
+  static get styles() {
+    return css`
+      .editor-row { margin-bottom: 16px; }
+      .editor-row label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 12px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: 0.5px; }
+      ha-textfield { width: 100%; display: block; }
+      .switch-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+      .switch-row label { margin-bottom: 0; flex: 1; }
+    `;
+  }
+
+  render() {
+    if (!this._config) return html``;
+    return html`
+      <div>
+        <div class="editor-row">
+          <label>${t('card_title')}</label>
+          <ha-textfield
+            .value=${this._config.title || ''}
+            placeholder="${t('quick_timers')}"
+            @input=${(e) => this._valueChanged('title', e.target.value)}>
+          </ha-textfield>
+        </div>
+        <div class="editor-row switch-row">
+          <label>${t('hide_when_empty')}</label>
+          <ha-switch
+            .checked=${this._config.hide_when_empty === true}
+            @change=${(e) => this._valueChanged('hide_when_empty', e.target.checked)}>
+          </ha-switch>
+        </div>
+      </div>
+    `;
+  }
+}
+
+customElements.define('quick-timer-overview-card-editor', QuickTimerOverviewCardEditor);
 
 // ============================================
 // Quick Timer Overview Card
@@ -1560,6 +1759,8 @@ class QuickTimerOverviewCard extends LitElement {
   }
 
   setConfig(config) { this.config = config; }
+  static getConfigElement() { return document.createElement('quick-timer-overview-card-editor'); }
+  static getStubConfig() { return { title: '', hide_when_empty: false }; }
   getCardSize() { return 3; }
 
   connectedCallback() { super.connectedCallback(); this._updateInterval = setInterval(() => this.requestUpdate(), 1000); }
@@ -1567,6 +1768,7 @@ class QuickTimerOverviewCard extends LitElement {
 
   updated(changedProperties) {
     if (changedProperties.has('hass')) {
+      updateLanguage(this.hass);
       this._tasks = this.hass?.states[MONITOR_ENTITY]?.attributes?.active_tasks || {};
     }
   }
@@ -1617,15 +1819,20 @@ class QuickTimerOverviewCard extends LitElement {
     if (!this.hass) return html``;
     const entries = Object.entries(this._tasks);
 
+    // Hide when empty: render nothing if no active timers and option enabled
+    if (this.config?.hide_when_empty && entries.length === 0) {
+      return html``;
+    }
+
     return html`
       <ha-card>
         <div class="header">
           <ha-icon icon="mdi:calendar-clock"></ha-icon>
-          <h2>${this.config?.title || 'Quick Timers'}</h2>
+          <h2>${this.config?.title || t('quick_timers')}</h2>
           ${entries.length > 0 ? html`<span class="task-count">${entries.length}</span>` : ''}
         </div>
         ${entries.length === 0 ? html`
-          <div class="no-tasks"><ha-icon icon="mdi:calendar-check"></ha-icon><div>No active timers</div></div>
+          <div class="no-tasks"><ha-icon icon="mdi:calendar-check"></ha-icon><div>${t('no_active_timers')}</div></div>
         ` : html`
           <div class="task-list">
             ${entries.map(([id, task]) => html`
@@ -1658,6 +1865,7 @@ window.customCards.push({
   name: 'Quick Timer Card',
   description: 'Professional timer card with multi-target actions, dynamic presets, and unique card IDs.',
   preview: true,
+  configurable: true,
   documentationURL: 'https://github.com/jozefnad/homeassistant-quick_timer',
 });
 window.customCards.push({
@@ -1665,6 +1873,8 @@ window.customCards.push({
   name: 'Quick Timer Overview',
   description: 'Dashboard card showing all active scheduled tasks.',
   preview: true,
+  configurable: true,
+  documentationURL: 'https://github.com/jozefnad/homeassistant-quick_timer',
 });
 
 console.info(
@@ -1807,6 +2017,7 @@ class QuickTimerDialogInjector {
       if (!result) { this._cleanup(); return; }
       const { target, entityId } = result;
       const hass = this._getHass();
+      updateLanguage(hass);
       if (!isSupportedForQuickTimer(hass, entityId)) { this._removePanel(target); return; }
 
       const existingPanel = target.querySelector(`#${INJECTED_PANEL_ID}`);
@@ -1969,13 +2180,13 @@ class QuickTimerDialogInjector {
       </style>
       <div class="qt-header">
         <ha-icon icon="mdi:timer-outline"></ha-icon>
-        <span>Quick Timer</span>
-        ${history.length > 0 ? `<ha-icon class="qt-history-btn" icon="mdi:history" title="History"></ha-icon>` : ''}
+        <span>${t('quick_timer')}</span>
+        ${history.length > 0 ? `<ha-icon class="qt-history-btn" icon="mdi:history" title="${t('history')}"></ha-icon>` : ''}
         <ha-icon class="qt-chevron" icon="mdi:chevron-down"></ha-icon>
       </div>
       <div class="qt-body">
         <div class="qt-history">
-          <div class="qt-history-title">Recent</div>
+          <div class="qt-history-title">${t('recent')}</div>
           <div class="qt-history-items"></div>
         </div>
         <div class="qt-countdown">
@@ -1984,24 +2195,24 @@ class QuickTimerDialogInjector {
             <div class="qt-countdown-time">00:00:00</div>
             <div class="qt-countdown-action"></div>
           </div>
-          <button class="qt-btn qt-btn-cancel">Cancel</button>
+          <button class="qt-btn qt-btn-cancel">${t('cancel')}</button>
         </div>
         <div class="qt-controls">
           <div class="qt-mode-row">
             <button class="qt-mode-btn qt-mode-relative ${initialTimeMode === TIME_MODE_RELATIVE ? 'active' : ''}" data-mode="relative">
-              <ha-icon icon="mdi:timer-outline"></ha-icon>Delay
+              <ha-icon icon="mdi:timer-outline"></ha-icon>${t('delay')}
             </button>
             <button class="qt-mode-btn qt-mode-absolute ${initialTimeMode === TIME_MODE_ABSOLUTE ? 'active' : ''}" data-mode="absolute">
-              <ha-icon icon="mdi:clock-outline"></ha-icon>Time
+              <ha-icon icon="mdi:clock-outline"></ha-icon>${t('time')}
             </button>
           </div>
           <div class="qt-chips ${initialTimeMode === TIME_MODE_ABSOLUTE ? 'hidden' : ''}"></div>
           <div class="qt-row qt-row-relative ${initialTimeMode === TIME_MODE_ABSOLUTE ? 'hidden' : ''}">
             <input type="number" class="qt-input qt-time-input" value="${initialDelay}" min="1" inputmode="numeric">
             <select class="qt-select qt-unit-select">
-              <option value="seconds" ${initialUnit === 'seconds' ? 'selected' : ''}>Sec</option>
-              <option value="minutes" ${initialUnit === 'minutes' ? 'selected' : ''}>Min</option>
-              <option value="hours" ${initialUnit === 'hours' ? 'selected' : ''}>Hrs</option>
+              <option value="seconds" ${initialUnit === 'seconds' ? 'selected' : ''}>${t('sec')}</option>
+              <option value="minutes" ${initialUnit === 'minutes' ? 'selected' : ''}>${t('min')}</option>
+              <option value="hours" ${initialUnit === 'hours' ? 'selected' : ''}>${t('hrs')}</option>
             </select>
             <select class="qt-select qt-service-select">${serviceOptionsHtml}</select>
           </div>
@@ -2013,11 +2224,11 @@ class QuickTimerDialogInjector {
           <div class="qt-device-selector"></div>
           <div class="qt-row">
             <div class="qt-notify">
-              <button class="qt-notify-btn qt-notify-ha ${initialNotifyHa ? 'active' : ''}" title="HA Notification"><ha-icon icon="mdi:bell${initialNotifyHa ? '' : '-off-outline'}"></ha-icon></button>
-              <button class="qt-notify-btn qt-notify-mobile ${initialNotifyMobile ? 'active' : ''}" title="Mobile Notification"><ha-icon icon="mdi:cellphone${initialNotifyMobile ? '-message' : ''}"></ha-icon></button>
+              <button class="qt-notify-btn qt-notify-ha ${initialNotifyHa ? 'active' : ''}" title="${t('ha_notification')}"><ha-icon icon="mdi:bell${initialNotifyHa ? '' : '-off-outline'}"></ha-icon></button>
+              <button class="qt-notify-btn qt-notify-mobile ${initialNotifyMobile ? 'active' : ''}" title="${t('mobile_notification')}"><ha-icon icon="mdi:cellphone${initialNotifyMobile ? '-message' : ''}"></ha-icon></button>
             </div>
             <div class="qt-buttons">
-              <button class="qt-btn qt-btn-primary qt-btn-start"><ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 16px;"></ha-icon>Schedule</button>
+              <button class="qt-btn qt-btn-primary qt-btn-start"><ha-icon icon="mdi:timer-outline" style="--mdc-icon-size: 16px;"></ha-icon>${t('schedule')}</button>
             </div>
           </div>
         </div>
@@ -2065,7 +2276,7 @@ class QuickTimerDialogInjector {
     if (deviceSelectorContainer) {
       const label = document.createElement('div');
       label.style.cssText = 'font-size: 12px; color: var(--secondary-text-color); margin-bottom: 4px; margin-top: 4px;';
-      label.textContent = 'Mobile Notification Devices';
+      label.textContent = t('mobile_notification_devices');
       deviceSelectorContainer.appendChild(label);
 
       const selector = document.createElement('ha-selector');
@@ -2142,8 +2353,8 @@ class QuickTimerDialogInjector {
       if (!entries?.length || !historyItems) return;
       historyItems.innerHTML = entries.slice(0, 3).map((entry, idx) => {
         const svc = entry.finish_actions?.[0]?.service || entry.service;
-        const svcLabel = svc ? getServiceLabel(null, svc) : 'Action';
-        const timeLabel = entry.time_mode === TIME_MODE_ABSOLUTE ? `at ${entry.at_time}` : `in ${entry.delay}${{ seconds: 's', minutes: 'm', hours: 'h' }[entry.unit] || 'm'}`;
+        const svcLabel = svc ? getServiceLabel(this._getHass(), svc) : t('action');
+        const timeLabel = entry.time_mode === TIME_MODE_ABSOLUTE ? `${t('at')} ${entry.at_time}` : `${t('in')} ${entry.delay}${{ seconds: t('sec'), minutes: t('min'), hours: t('hrs') }[entry.unit] || t('min')}`;
         return `<button class="qt-history-chip" data-index="${idx}">${svcLabel} ${timeLabel}</button>`;
       }).join('');
 
@@ -2327,11 +2538,11 @@ class QuickTimerDialogInjector {
         await hass.callService('quick_timer', 'cancel_action', { task_id: entityId });
         cancelBtn.textContent = '\u2713';
         if (navigator.vibrate) navigator.vibrate([30, 30, 30]);
-        setTimeout(() => { cancelBtn.textContent = 'Cancel'; cancelBtn.disabled = false; this._updatePanelState(panel, entityId); }, 800);
+        setTimeout(() => { cancelBtn.textContent = t('cancel'); cancelBtn.disabled = false; this._updatePanelState(panel, entityId); }, 800);
       } catch (e) {
         console.error('[Quick Timer] Cancel failed:', e);
         cancelBtn.textContent = '\u2717';
-        setTimeout(() => { cancelBtn.textContent = 'Cancel'; cancelBtn.disabled = false; }, 1500);
+        setTimeout(() => { cancelBtn.textContent = t('cancel'); cancelBtn.disabled = false; }, 1500);
       }
     });
 
