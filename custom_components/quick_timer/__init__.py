@@ -877,17 +877,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             # Build finish_actions from legacy parameters
             if service:
                 finish_service = service
+                action_data = dict(service_data) if service_data else {}
             elif action:
-                # Map legacy action to service
-                domain = entity_id.split(".")[0]
-                if action in ("on", "turn_on"):
-                    finish_service = f"{domain}.turn_on"
-                elif action in ("off", "turn_off"):
-                    finish_service = f"{domain}.turn_off"
-                elif action == "toggle":
-                    finish_service = f"{domain}.toggle"
-                else:
-                    finish_service = f"{domain}.{action}"
+                # Reuse _map_legacy_action to correctly convert action strings
+                # (e.g. "set_hvac_mode_heat" → service "climate.set_hvac_mode" + data {"hvac_mode": "heat"})
+                svc_domain, svc_name, extra_data = coord._map_legacy_action(entity_id, action)
+                finish_service = f"{svc_domain}.{svc_name}"
+                action_data = dict(service_data) if service_data else {}
+                action_data.update(extra_data)
             else:
                 _LOGGER.error("No valid action or service provided")
                 return
@@ -895,7 +892,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             finish_actions = [{
                 "service": finish_service,
                 "target": {"entity_id": entity_id},
-                "data": service_data or {},
+                "data": action_data,
             }]
 
             # Handle run_now logic (legacy)
