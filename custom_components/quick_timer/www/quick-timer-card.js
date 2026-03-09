@@ -1962,18 +1962,33 @@ class QuickTimerDialogInjector {
     const ha = document.querySelector('home-assistant');
     if (!ha?.shadowRoot) return null;
 
+    const extractResult = (dialog, moreInfoInfo) => {
+      if (!moreInfoInfo?.shadowRoot) return null;
+      const content = moreInfoInfo.shadowRoot.querySelector('.content');
+      const entityId = dialog?.entityId || moreInfoInfo.entityId;
+      return content && entityId ? { target: content, entityId } : null;
+    };
+
     const paths = [
+      // HA 2026.3.0+: ha-more-info-dialog > shadow > ha-adaptive-dialog (light DOM) > ha-more-info-info
+      () => {
+        const dialog = ha.shadowRoot.querySelector('ha-more-info-dialog');
+        if (!dialog?.shadowRoot) return null;
+        const adaptiveDialog = dialog.shadowRoot.querySelector('ha-adaptive-dialog');
+        if (!adaptiveDialog) return null;
+        const moreInfoInfo = adaptiveDialog.querySelector('ha-more-info-info');
+        return extractResult(dialog, moreInfoInfo);
+      },
+      // Legacy: ha-more-info-dialog > shadow > ha-dialog > ha-more-info-info
       () => {
         const dialog = ha.shadowRoot.querySelector('ha-more-info-dialog');
         if (!dialog?.shadowRoot) return null;
         const haDialog = dialog.shadowRoot.querySelector('ha-dialog');
         if (!haDialog) return null;
         const moreInfoInfo = haDialog.querySelector('ha-more-info-info');
-        if (!moreInfoInfo?.shadowRoot) return null;
-        const content = moreInfoInfo.shadowRoot.querySelector('.content');
-        const entityId = dialog.entityId || moreInfoInfo.entityId;
-        return content && entityId ? { target: content, entityId } : null;
+        return extractResult(dialog, moreInfoInfo);
       },
+      // Legacy variant: ha-dialog > ha-more-info-info or more-info-content
       () => {
         const dialog = ha.shadowRoot.querySelector('ha-more-info-dialog');
         if (!dialog?.shadowRoot) return null;
@@ -1985,21 +2000,26 @@ class QuickTimerDialogInjector {
         const entityId = dialog.entityId || moreInfoContent.entityId;
         return content && entityId ? { target: content, entityId } : null;
       },
+      // Deep fallback: traverse shadow roots to locate ha-more-info-info
       () => {
         const dialog = ha.shadowRoot.querySelector('ha-more-info-dialog');
         if (!dialog) return null;
         const entityId = dialog.entityId;
         if (!entityId) return null;
-        const findContent = (root, depth = 0) => {
-          if (depth > 5 || !root) return null;
-          const c = root.querySelector?.('.content');
-          if (c) return c;
-          if (root.shadowRoot) { const sc = findContent(root.shadowRoot, depth + 1); if (sc) return sc; }
-          for (const child of (root.children || [])) { const cc = findContent(child, depth + 1); if (cc) return cc; }
+        const findEl = (root, tag, depth = 0) => {
+          if (depth > 6 || !root) return null;
+          const el = root.querySelector?.(tag);
+          if (el) return el;
+          if (root.shadowRoot) { const r = findEl(root.shadowRoot, tag, depth + 1); if (r) return r; }
+          for (const child of (root.children || [])) {
+            if (child.shadowRoot) { const r = findEl(child.shadowRoot, tag, depth + 1); if (r) return r; }
+          }
           return null;
         };
-        const content = findContent(dialog);
-        return content && entityId ? { target: content, entityId } : null;
+        const moreInfoInfo = findEl(dialog.shadowRoot, 'ha-more-info-info');
+        if (!moreInfoInfo?.shadowRoot) return null;
+        const content = moreInfoInfo.shadowRoot.querySelector('.content');
+        return content ? { target: content, entityId } : null;
       }
     ];
 
