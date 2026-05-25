@@ -345,12 +345,95 @@ function getServiceFields(hass, service, entityId) {
     return result;
   };
 
+  /**
+   * Convert HA's 'state' selector type (and empty 'select' selectors) to concrete
+   * 'select' selectors with options resolved from the entity's runtime attributes.
+   *
+   * Many HA services (climate.set_fan_mode, climate.set_hvac_mode, fan.set_preset_mode,
+   * media_player.select_source, etc.) use selector: {state: {attribute: X}} which
+   * requires ha-service-control context to resolve. Without that context the
+   * ha-selector renders disabled/empty, which is exactly the reported bug.
+   *
+   * Resolution order for a field key / attribute name K:
+   *   entity.attributes[K + 's']            → fan_mode      → fan_modes
+   *   entity.attributes[K + '_list']         → source        → source_list
+   *   entity.attributes['available_' + K + 's'] → mode      → available_modes
+   */
+  const resolveDynamicSelectors = (fields) => {
+    if (!entityState) return fields;
+
+    const getOptionsFromAttr = (baseKey) => {
+      const candidates = [
+        baseKey + 's',
+        baseKey + '_list',
+        'available_' + baseKey + 's',
+      ];
+      for (const c of candidates) {
+        const vals = entityState.attributes?.[c];
+        if (Array.isArray(vals) && vals.length > 0) {
+          return vals.map(v => {
+            const str = String(v);
+            // Try HA state translations first (e.g. component.climate.state._.heat)
+            let label = (typeof hass.localize === 'function')
+              ? (hass.localize(`component.${d}.state._.${str}`) || '')
+              : '';
+            if (!label) label = str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return { value: str, label };
+          });
+        }
+      }
+      return null;
+    };
+
+    const result = {};
+    for (const [key, field] of Object.entries(fields)) {
+      let f = { ...field };
+
+      if (f.selector?.state !== undefined) {
+        // HA 'state' selector — needs entity context we don't have, resolve manually
+        const stateSelector = f.selector.state || {};
+        const attrName = stateSelector.attribute;
+        const hideStates = Array.isArray(stateSelector.hide_states) ? stateSelector.hide_states : [];
+
+        let options = getOptionsFromAttr(attrName || key);
+
+        if (options) {
+          if (hideStates.length > 0) options = options.filter(o => !hideStates.includes(o.value));
+        }
+
+        if (options && options.length > 0) {
+          f = { ...f, selector: { select: { options, mode: 'dropdown' } } };
+        } else {
+          // No options found — fall back to plain text input
+          const { selector: _s, ...rest } = f;
+          f = rest;
+        }
+
+      } else if (f.selector?.select) {
+        // 'select' selector with empty options array — same resolution
+        const existing = f.selector.select.options;
+        if (!existing || existing.length === 0) {
+          const options = getOptionsFromAttr(key);
+          if (options && options.length > 0) {
+            f = { ...f, selector: { select: { ...f.selector.select, options } } };
+          } else {
+            const { selector: _s, ...rest } = f;
+            f = rest;
+          }
+        }
+      }
+
+      result[key] = f;
+    }
+    return result;
+  };
+
   // If filtering removed ALL fields but there were unfiltered fields, return all
   // (the entity might not report supported_features correctly)
   if (anyFiltered && Object.keys(filtered).length === 0 && Object.keys(allFields).length > 0) {
-    return localizeFields(allFields);
+    return resolveDynamicSelectors(localizeFields(allFields));
   }
-  return localizeFields(filtered);
+  return resolveDynamicSelectors(localizeFields(filtered));
 }
 
 function getServicesForEntity(hass, entityId) {
@@ -533,7 +616,7 @@ class QuickTimerCardEditor extends LitElement {
       .editor-row { margin-bottom: 16px; }
       .editor-row:last-child { margin-bottom: 0; }
       .editor-row label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 12px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: 0.5px; }
-      ha-selector, ha-select, ha-textfield { width: 100%; display: block; }
+      ha-selector, ha-select, ha-input { width: 100%; display: block; }
       .inline-row { display: flex; gap: 12px; flex-wrap: wrap; }
       .inline-row > * { flex: 1; min-width: 120px; }
       @media (max-width: 400px) { .inline-row { flex-direction: column; } .inline-row > * { min-width: 100%; } }
@@ -665,9 +748,7 @@ class QuickTimerCardEditor extends LitElement {
           </div>
           ${target.entity ? html`
             <div style="margin-bottom: 8px;">
-              <ha-select .value=${target.service || ''} @selected=${(e) => this._targetChanged(globalIdx, 'service', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition style="width: 100%;">
-                ${targetServices.map(s => html`<ha-list-item value="${s.value}">${s.label}</ha-list-item>`)}
-              </ha-select>
+              <ha-select .value=${target.service || ''} .options=${targetServices.map(s => ({ value: s.value, label: s.label }))} @selected=${(e) => this._targetChanged(globalIdx, 'service', e.detail.value)} style="width: 100%;"></ha-select>
             </div>
             ${Object.keys(targetFields).length > 0 ? html`
               ${Object.entries(targetFields).map(([key, field]) => html`
@@ -676,21 +757,18 @@ class QuickTimerCardEditor extends LitElement {
                     <ha-selector .hass=${this.hass} .selector=${field.selector} .value=${(target.data || {})[key]} .label=${field.name || key} .required=${field.required === true}
                       @value-changed=${(e) => this._targetDataChanged(globalIdx, key, e.detail.value)}></ha-selector>
                   ` : html`
-                    <ha-textfield .value=${String((target.data || {})[key] ?? '')} .required=${field.required === true}
+                    <ha-input .value=${String((target.data || {})[key] ?? '')} .required=${field.required === true}
                       @change=${(e) => {
                         const raw = e.target.value;
                         const num = Number(raw);
                         this._targetDataChanged(globalIdx, key, raw !== '' && !isNaN(num) ? num : raw);
-                      }} .label=${field.name || key}></ha-textfield>
+                      }} .label=${field.name || key}></ha-input>
                   `}
                 </div>
               `)}
             ` : ''}
             <div style="margin-top: 6px;">
-              <ha-select .value=${target.phase || 'finish'} @selected=${(e) => this._targetChanged(globalIdx, 'phase', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition style="width: 100%;">
-                <ha-list-item value="finish">${t('exec_on_finish')}</ha-list-item>
-                <ha-list-item value="start">${t('exec_on_start')}</ha-list-item>
-              </ha-select>
+              <ha-select .value=${target.phase || 'finish'} .options=${[{ value: 'finish', label: t('exec_on_finish') }, { value: 'start', label: t('exec_on_start') }]} @selected=${(e) => this._targetChanged(globalIdx, 'phase', e.detail.value)} style="width: 100%;"></ha-select>
             </div>
           ` : ''}
         </div>
@@ -701,36 +779,29 @@ class QuickTimerCardEditor extends LitElement {
       <!-- Timer Defaults -->
       <div class="editor-row">
         <label>${t('name_optional')}</label>
-        <ha-textfield .value=${this._config.name || ''} @input=${(e) => this._valueChanged('name', e.target.value)} placeholder="${t('auto_from_targets')}"></ha-textfield>
+        <ha-input .value=${this._config.name || ''} @input=${(e) => this._valueChanged('name', e.target.value)} placeholder="${t('auto_from_targets')}"></ha-input>
       </div>
       <div class="inline-row">
         <div class="editor-row">
           <label>${t('time_mode')}</label>
-          <ha-select .value=${this._config.default_time_mode || TIME_MODE_RELATIVE} @selected=${(e) => this._valueChanged('default_time_mode', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-            <ha-list-item value="relative">${t('delay_relative')}</ha-list-item>
-            <ha-list-item value="absolute">${t('time_absolute')}</ha-list-item>
-          </ha-select>
+          <ha-select .value=${this._config.default_time_mode || TIME_MODE_RELATIVE} .options=${[{ value: 'relative', label: t('delay_relative') }, { value: 'absolute', label: t('time_absolute') }]} @selected=${(e) => this._valueChanged('default_time_mode', e.detail.value)}></ha-select>
         </div>
         ${(this._config.default_time_mode || TIME_MODE_RELATIVE) === TIME_MODE_RELATIVE ? html`
           <div class="editor-row">
             <label>${t('time_unit')}</label>
-            <ha-select .value=${this._config.default_unit || 'minutes'} @selected=${(e) => this._valueChanged('default_unit', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-              <ha-list-item value="seconds">${t('seconds')}</ha-list-item>
-              <ha-list-item value="minutes">${t('minutes')}</ha-list-item>
-              <ha-list-item value="hours">${t('hours')}</ha-list-item>
-            </ha-select>
+            <ha-select .value=${this._config.default_unit || 'minutes'} .options=${[{ value: 'seconds', label: t('seconds') }, { value: 'minutes', label: t('minutes') }, { value: 'hours', label: t('hours') }]} @selected=${(e) => this._valueChanged('default_unit', e.detail.value)}></ha-select>
           </div>
         ` : ''}
       </div>
       ${(this._config.default_time_mode || TIME_MODE_RELATIVE) === TIME_MODE_RELATIVE ? html`
         <div class="editor-row">
           <label>${t('default_delay')}</label>
-          <ha-textfield type="number" .value=${String(this._config.default_delay || '')} @change=${(e) => { const v = parseInt(e.target.value, 10); this._valueChanged('default_delay', v > 0 ? v : 15); }} min="1" max="9999"></ha-textfield>
+          <ha-input type="number" .value=${String(this._config.default_delay || '')} @change=${(e) => { const v = parseInt(e.target.value, 10); this._valueChanged('default_delay', v > 0 ? v : 15); }} min="1" max="9999"></ha-input>
         </div>
       ` : html`
         <div class="editor-row">
           <label>${t('default_time_hhmm')}</label>
-          <ha-textfield type="time" .value=${this._config.default_at_time || ''} @input=${(e) => this._valueChanged('default_at_time', e.target.value)} placeholder="e.g. 17:30"></ha-textfield>
+          <ha-input type="time" .value=${this._config.default_at_time || ''} @input=${(e) => this._valueChanged('default_at_time', e.target.value)} placeholder="e.g. 17:30"></ha-input>
         </div>
       `}
       <div class="editor-row" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider-color);">
@@ -764,10 +835,7 @@ class QuickTimerCardEditor extends LitElement {
     const appearanceSection = html`
       <div class="editor-row">
         <label>${t('display_mode')}</label>
-        <ha-select .value=${this._config.mode || 'compact'} @selected=${(e) => this._valueChanged('mode', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          <ha-list-item value="compact">${t('compact_tile')}</ha-list-item>
-          <ha-list-item value="full">${t('full')}</ha-list-item>
-        </ha-select>
+        <ha-select .value=${this._config.mode || 'compact'} .options=${[{ value: 'compact', label: t('compact_tile') }, { value: 'full', label: t('full') }]} @selected=${(e) => this._valueChanged('mode', e.detail.value)}></ha-select>
       </div>
       <div class="inline-row">
         <div class="editor-row" style="margin-top: 8px;">
@@ -796,24 +864,16 @@ class QuickTimerCardEditor extends LitElement {
       <div class="inline-row">
         <div class="editor-row">
           <label>${t('primary_info')}</label>
-          <ha-select .value=${this._config.primary_info || 'name'} @selected=${(e) => this._valueChanged('primary_info', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-            ${Object.keys(PRIMARY_INFO_OPTIONS).map(k => html`<ha-list-item value="${k}">${t('pi_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
-          </ha-select>
+          <ha-select .value=${this._config.primary_info || 'name'} .options=${Object.keys(PRIMARY_INFO_OPTIONS).map(k => ({ value: k, label: t('pi_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._valueChanged('primary_info', e.detail.value)}></ha-select>
         </div>
         <div class="editor-row">
           <label>${t('secondary_info')}</label>
-          <ha-select .value=${this._config.secondary_info || 'timer'} @selected=${(e) => this._valueChanged('secondary_info', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-            ${Object.keys(SECONDARY_INFO_OPTIONS).map(k => html`<ha-list-item value="${k}">${t('si_' + k)}</ha-list-item>`)}
-          </ha-select>
+          <ha-select .value=${this._config.secondary_info || 'timer'} .options=${Object.keys(SECONDARY_INFO_OPTIONS).map(k => ({ value: k, label: t('si_' + k) }))} @selected=${(e) => this._valueChanged('secondary_info', e.detail.value)}></ha-select>
         </div>
       </div>
       <div class="editor-row">
         <label>${t('inactive_style')}</label>
-        <ha-select .value=${this._config.inactive_style || 'dim'} @selected=${(e) => this._valueChanged('inactive_style', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          <ha-list-item value="none">${t('inactive_none')}</ha-list-item>
-          <ha-list-item value="dim">${t('inactive_dim')}</ha-list-item>
-          <ha-list-item value="grayscale">${t('inactive_grayscale')}</ha-list-item>
-        </ha-select>
+        <ha-select .value=${this._config.inactive_style || 'dim'} .options=${[{ value: 'none', label: t('inactive_none') }, { value: 'dim', label: t('inactive_dim') }, { value: 'grayscale', label: t('inactive_grayscale') }]} @selected=${(e) => this._valueChanged('inactive_style', e.detail.value)}></ha-select>
       </div>
     `;
 
@@ -821,23 +881,17 @@ class QuickTimerCardEditor extends LitElement {
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:gesture-tap"></ha-icon>
         <span class="action-label">${t('tap')}</span>
-        <ha-select .value=${this._config.tap_action?.action || 'toggle-timer'} @selected=${(e) => this._actionChanged('tap_action', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          ${Object.keys(ACTION_TYPES).map(k => html`<ha-list-item value="${k}">${t('action_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
-        </ha-select>
+        <ha-select .value=${this._config.tap_action?.action || 'toggle-timer'} .options=${Object.keys(ACTION_TYPES).map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('tap_action', e.detail.value)}></ha-select>
       </div>
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:gesture-tap-hold"></ha-icon>
         <span class="action-label">${t('hold')}</span>
-        <ha-select .value=${this._config.hold_action?.action || 'settings'} @selected=${(e) => this._actionChanged('hold_action', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          ${Object.keys(ACTION_TYPES).map(k => html`<ha-list-item value="${k}">${t('action_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
-        </ha-select>
+        <ha-select .value=${this._config.hold_action?.action || 'settings'} .options=${Object.keys(ACTION_TYPES).map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('hold_action', e.detail.value)}></ha-select>
       </div>
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:circle-outline"></ha-icon>
         <span class="action-label">${t('icon_tap')}</span>
-        <ha-select .value=${this._config.icon_tap_action?.action || 'settings'} @selected=${(e) => this._actionChanged('icon_tap_action', e.target.value)} @closed=${(e) => e.stopPropagation()} fixedMenuPosition>
-          ${Object.keys(ACTION_TYPES).map(k => html`<ha-list-item value="${k}">${t('action_' + k.replace(/-/g, '_'))}</ha-list-item>`)}
-        </ha-select>
+        <ha-select .value=${this._config.icon_tap_action?.action || 'settings'} .options=${Object.keys(ACTION_TYPES).map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('icon_tap_action', e.detail.value)}></ha-select>
       </div>
     `;
 
@@ -1690,7 +1744,7 @@ class QuickTimerOverviewCardEditor extends LitElement {
     return css`
       .editor-row { margin-bottom: 16px; }
       .editor-row label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 12px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: 0.5px; }
-      ha-textfield { width: 100%; display: block; }
+      ha-input { width: 100%; display: block; }
       .switch-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
       .switch-row label { margin-bottom: 0; flex: 1; }
     `;
@@ -1702,11 +1756,11 @@ class QuickTimerOverviewCardEditor extends LitElement {
       <div>
         <div class="editor-row">
           <label>${t('card_title')}</label>
-          <ha-textfield
+          <ha-input
             .value=${this._config.title || ''}
             placeholder="${t('quick_timers')}"
             @input=${(e) => this._valueChanged('title', e.target.value)}>
-          </ha-textfield>
+          </ha-input>
         </div>
         <div class="editor-row switch-row">
           <label>${t('hide_when_empty')}</label>
