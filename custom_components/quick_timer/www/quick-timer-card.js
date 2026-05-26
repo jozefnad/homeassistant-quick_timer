@@ -79,147 +79,54 @@ const SECONDARY_INFO_OPTIONS = {
 // Internationalization (i18n)
 // ============================================
 
-const TRANSLATIONS = {
-  en: {
-    // Common
-    'schedule': 'Schedule', 'cancel': 'Cancel', 'delay': 'Delay', 'time': 'Time',
-    'quick_timer': 'Quick Timer', 'recent': 'Recent', 'history': 'History',
-    'action': 'Action',
-    // Units
-    'seconds': 'Seconds', 'minutes': 'Minutes', 'hours': 'Hours',
-    'sec': 'sec', 'min': 'min', 'hrs': 'hrs',
-    // Time
-    'ago_format': '{v}{u} ago', 'd': 'd', 'h': 'h', 'm': 'm', 's': 's',
-    // States
-    'on': 'On', 'off': 'Off',
-    // Card
-    'countdown_to_action': 'Countdown to action',
-    'no_active_timers': 'No active timers',
-    'add_at_least_one_target': 'Please add at least one target',
-    'n_targets_configured': '{n} targets configured',
-    'one_entity_scheduled': '1 Entity Scheduled',
-    'n_entities_scheduled': '{n} Entities Scheduled',
-    'n_actions': '{n} actions',
-    'timer': 'Timer', 'in': 'in', 'at': 'at',
-    // Notifications
-    'ha_notification': 'HA Notification', 'mobile_notification': 'Mobile Notification',
-    'mobile_notification_devices': 'Mobile Notification Devices',
-    // Editor sections
-    'targets_and_timer': 'Targets & Timer', 'appearance': 'Appearance', 'interactions': 'Interactions',
-    // Editor fields
-    'name_optional': 'Name (optional)', 'auto_from_targets': 'Auto from targets',
-    'time_mode': 'Time Mode', 'delay_relative': 'Delay (Relative)', 'time_absolute': 'Time (Absolute)',
-    'time_unit': 'Time Unit', 'default_delay': 'Default Delay', 'default_time_hhmm': 'Default Time (HH:MM)',
-    'targets_and_actions': 'Targets and actions',
-    'targets_hint_1': 'Add entity targets that will be scheduled together. Each target can execute',
-    'targets_hint_bold_1': 'on timer start',
-    'targets_hint_2': '(immediately) or',
-    'targets_hint_bold_2': 'on timer finish',
-    'targets_hint_3': '(when countdown ends).',
-    'add_target': 'Add Target',
-    'on_start': 'On Start', 'on_finish': 'On Finish',
-    'exec_on_finish': 'Execute on Finish (when timer ends)',
-    'exec_on_start': 'Execute on Start (immediately)',
-    // Display
-    'display_mode': 'Display Mode', 'compact_tile': 'Compact (Tile)', 'full': 'Full',
-    'show_progress_bar': 'Show Progress Bar', 'show_badge': 'Show Badge',
-    'icon': 'Icon', 'icon_color': 'Icon Color',
-    'primary_info': 'Primary Info', 'secondary_info': 'Secondary Info',
-    'inactive_style': 'Inactive Style',
-    'inactive_none': 'None', 'inactive_dim': 'Dim (opacity)', 'inactive_grayscale': 'Grayscale',
-    'hide_when_empty': 'Hide when empty',
-    // Interactions
-    'tap': 'Tap', 'hold': 'Hold', 'icon_tap': 'Icon Tap',
-    // Action types
-    'action_toggle_timer': 'Start/Cancel Timer', 'action_settings': 'Open Settings', 'action_none': 'No Action',
-    // Primary info options
-    'pi_name': 'Name', 'pi_state': 'Entity State', 'pi_last_changed': 'Last Changed', 'pi_none': 'Hidden',
-    // Secondary info options
-    'si_timer': 'Timer/Countdown', 'si_state': 'Entity State', 'si_action': 'Scheduled Action', 'si_none': 'Hidden',
-    // Overview
-    'quick_timers': 'Quick Timers',
-    // Phase
-    'start': 'start', 'finish': 'finish',
-    // Color
-    'color_auto': 'Auto color (by timer state)',
-    'card_title': 'Card Title',
-  },
-  sk: {
-    // Common
-    'schedule': 'Naplánovať', 'cancel': 'Zrušiť', 'delay': 'Oneskorenie', 'time': 'Čas',
-    'quick_timer': 'Quick Timer', 'recent': 'Nedávne', 'history': 'História',
-    'action': 'Akcia',
-    // Units
-    'seconds': 'Sekundy', 'minutes': 'Minúty', 'hours': 'Hodiny',
-    'sec': 'sek', 'min': 'min', 'hrs': 'hod',
-    // Time
-    'ago_format': 'pred {v}{u}', 'd': 'd', 'h': 'h', 'm': 'm', 's': 's',
-    // States
-    'on': 'Zapnuté', 'off': 'Vypnuté',
-    // Card
-    'countdown_to_action': 'Odpočet do akcie',
-    'no_active_timers': 'Žiadne aktívne časovače',
-    'add_at_least_one_target': 'Pridajte aspoň jeden cieľ',
-    'n_targets_configured': '{n} cieľov nakonfigurovaných',
-    'one_entity_scheduled': '1 entita naplánovaná',
-    'n_entities_scheduled': '{n} entít naplánovaných',
-    'n_actions': '{n} akcií',
-    'timer': 'Časovač', 'in': 'za', 'at': 'o',
-    // Notifications
-    'ha_notification': 'HA upozornenie', 'mobile_notification': 'Mobilné upozornenie',
-    'mobile_notification_devices': 'Zariadenia mobilných upozornení',
-    // Editor sections
-    'targets_and_timer': 'Ciele a časovač', 'appearance': 'Vzhľad', 'interactions': 'Interakcie',
-    // Editor fields
-    'name_optional': 'Názov (voliteľný)', 'auto_from_targets': 'Auto z cieľov',
-    'time_mode': 'Časový režim', 'delay_relative': 'Oneskorenie (Relatívne)', 'time_absolute': 'Čas (Absolútny)',
-    'time_unit': 'Časová jednotka', 'default_delay': 'Predvolené oneskorenie', 'default_time_hhmm': 'Predvolený čas (HH:MM)',
-    'targets_and_actions': 'Ciele a akcie',
-    'targets_hint_1': 'Pridajte ciele entít, ktoré budú naplánované spoločne. Každý cieľ sa môže vykonať',
-    'targets_hint_bold_1': 'pri štarte časovača',
-    'targets_hint_2': '(okamžite) alebo',
-    'targets_hint_bold_2': 'pri skončení časovača',
-    'targets_hint_3': '(keď odpočet skončí).',
-    'add_target': 'Pridať cieľ',
-    'on_start': 'Na štarte', 'on_finish': 'Na konci',
-    'exec_on_finish': 'Vykonať na konci (keď časovač skončí)',
-    'exec_on_start': 'Vykonať na štarte (okamžite)',
-    // Display
-    'display_mode': 'Režim zobrazenia', 'compact_tile': 'Kompaktný (Dlaždica)', 'full': 'Plný',
-    'show_progress_bar': 'Zobraziť priebeh', 'show_badge': 'Zobraziť odznak',
-    'icon': 'Ikona', 'icon_color': 'Farba ikony',
-    'primary_info': 'Primárna info', 'secondary_info': 'Sekundárna info',
-    'inactive_style': 'Neaktívny štýl',
-    'inactive_none': 'Žiadny', 'inactive_dim': 'Stlmený (priehľadnosť)', 'inactive_grayscale': 'Odtiene sivej',
-    'hide_when_empty': 'Skryť keď prázdne',
-    // Interactions
-    'tap': 'Ťuknutie', 'hold': 'Podržanie', 'icon_tap': 'Ťuknutie na ikonu',
-    // Action types
-    'action_toggle_timer': 'Štart/Zrušiť časovač', 'action_settings': 'Otvoriť nastavenia', 'action_none': 'Žiadna akcia',
-    // Primary info options
-    'pi_name': 'Názov', 'pi_state': 'Stav entity', 'pi_last_changed': 'Naposledy zmenené', 'pi_none': 'Skrytý',
-    // Secondary info options
-    'si_timer': 'Časovač/Odpočet', 'si_state': 'Stav entity', 'si_action': 'Naplánovaná akcia', 'si_none': 'Skrytý',
-    // Overview
-    'quick_timers': 'Quick Timers',
-    // Phase
-    'start': 'štart', 'finish': 'koniec',
-    // Color
-    'color_auto': 'Automatická farba (podľa stavu)',
-    'card_title': 'Názov karty',
-  },
-};
-
+const _qtTranslationsCache = {};
 let _qtLang = 'en';
+let _qtTranslations = {};
+let _qtLangLoading = null;
 
-function updateLanguage(hass) {
-  if (hass?.language) {
-    _qtLang = TRANSLATIONS[hass.language] ? hass.language : 'en';
+async function loadTranslations(lang) {
+  if (_qtTranslationsCache[lang]) {
+    _qtTranslations = _qtTranslationsCache[lang];
+    return;
+  }
+  // Avoid duplicate in-flight requests for the same language
+  if (_qtLangLoading === lang) return;
+  _qtLangLoading = lang;
+  try {
+    const url = `/quick_timer_static/translations/${lang}.json`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      _qtTranslationsCache[lang] = data;
+      _qtTranslations = data;
+      _qtLangLoading = null;
+      return;
+    }
+  } catch (_) { /* fall through */ }
+  // Fallback to English if requested language file not found
+  if (lang !== 'en') {
+    _qtLangLoading = null;
+    await loadTranslations('en');
+  } else {
+    _qtLangLoading = null;
   }
 }
 
+function updateLanguage(hass) {
+  if (hass?.language) {
+    const lang = hass.language;
+    if (_qtLang !== lang || !_qtTranslationsCache[lang]) {
+      _qtLang = lang;
+      loadTranslations(lang); // fire and forget
+    }
+  }
+}
+
+// Preload English on module load so t() works immediately before any hass update
+loadTranslations('en');
+
 function t(key) {
-  return TRANSLATIONS[_qtLang]?.[key] || TRANSLATIONS['en']?.[key] || key;
+  return _qtTranslations?.[key] ?? key;
 }
 
 // ============================================
@@ -830,7 +737,6 @@ class QuickTimerCardEditor extends LitElement {
 
   render() {
     if (!this.hass || !this._config) return html``;
-    updateLanguage(this.hass);
 
     const appearanceSection = html`
       <div class="editor-row">

@@ -17,6 +17,7 @@ async def async_register_frontend(hass: HomeAssistant):
     
     # Register View
     hass.http.register_view(QuickTimerCardView())
+    hass.http.register_view(QuickTimerTranslationView())
 
     # Prepare URL with cache buster
     try:
@@ -110,6 +111,39 @@ class QuickTimerCardView(HomeAssistantView):
             return web.Response(body=content, content_type="application/javascript")
         except Exception as e:
             _LOGGER.error("Error reading file: %s", e)
+            return web.Response(status=500, text=str(e))
+
+    def _read_file(self, file_path):
+        """Helper to read file safely in executor."""
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
+
+
+class QuickTimerTranslationView(HomeAssistantView):
+    """View for serving card translation JSON files."""
+
+    url = f"{URL_BASE}/translations/{{language}}"
+    name = "quick_timer:translations"
+    requires_auth = False
+
+    async def get(self, request, language):
+        """Return the translation JSON for the requested language."""
+        import re as _re
+        if not _re.fullmatch(r'[a-z]{2}(_[A-Z]{2})?\.json', language):
+            return web.Response(status=404, text="File not found")
+
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(current_dir, "www", "translations", language)
+
+        hass = request.app["hass"]
+        if not await hass.async_add_executor_job(os.path.exists, file_path):
+            return web.Response(status=404, text="Translation not found")
+
+        try:
+            content = await hass.async_add_executor_job(self._read_file, file_path)
+            return web.Response(body=content, content_type="application/json")
+        except Exception as e:
+            _LOGGER.error("Error reading translation file: %s", e)
             return web.Response(status=500, text=str(e))
 
     def _read_file(self, file_path):

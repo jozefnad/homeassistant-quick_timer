@@ -1,0 +1,113 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Quick Timer",
+        "description": "Met deze integratie kun je eenmalige acties inplannen voor elke entiteit met een afteltimer. Klik op verzenden om te installeren."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Er is slechts één instantie van Quick Timer toegestaan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Quick Timer Instellingen",
+        "description": "Stel de tijdsinstellingen in die worden weergegeven in de timerkaart. Voer kommagescheiden waarden in.",
+        "data": {
+          "preset_seconds": "Seconde-presets",
+          "preset_minutes": "Minuut-presets",
+          "preset_hours": "Uur-presets",
+          "enable_dialog_injection": "Quick Timer-paneel inschakelen in entiteitsdialogen"
+        }
+      }
+    }
+  },
+  "services": {
+    "run_action": {
+      "name": "Actie uitvoeren",
+      "description": "Plan een eenmalige actie in met een afteltimer.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": "Unieke identificatie voor deze timertaak."
+        },
+        "task_label": {
+          "name": "Taaklabel",
+          "description": "Een leesbaar label voor deze timertaak."
+        },
+        "finish_actions": {
+          "name": "Eindeacties",
+          "description": "Lijst van acties die worden uitgevoerd wanneer de timer eindigt."
+        },
+        "start_actions": {
+          "name": "Startacties",
+          "description": "Lijst van acties die direct worden uitgevoerd wanneer de timer start."
+        },
+        "delay": {
+          "name": "Uitstel",
+          "description": "Het uitstel voordat de actie wordt uitgevoerd."
+        },
+        "unit": {
+          "name": "Eenheid",
+          "description": "Tijdseenheid voor het uitstel (seconden, minuten, uren)."
+        },
+        "time_mode": {
+          "name": "Tijdsmodus",
+          "description": "Of een relatief uitstel of een absolute tijd wordt gebruikt."
+        },
+        "at_time": {
+          "name": "Op tijdstip",
+          "description": "Absolute tijd in HH:MM-formaat (wanneer tijdsmodus absoluut is)."
+        },
+        "notify_ha": {
+          "name": "HA-melding",
+          "description": "Stuur een permanente HA-melding."
+        },
+        "notify_mobile": {
+          "name": "Mobiele melding",
+          "description": "Stuur een mobiele pushmelding naar alle apparaten."
+        },
+        "notify_devices": {
+          "name": "Apparaten melden",
+          "description": "Specifieke mobiele apparaten om pushmeldingen naar te sturen."
+        }
+      }
+    },
+    "cancel_action": {
+      "name": "Actie annuleren",
+      "description": "Annuleer een geplande timertaak.",
+      "fields": {
+        "task_id": {
+          "name": "Taak-ID",
+          "description": "Het taak-ID om te annuleren."
+        }
+      }
+    },
+    "get_preferences": {
+      "name": "Voorkeuren ophalen",
+      "description": "Haal opgeslagen voorkeuren op voor een entiteit.",
+      "fields": {
+        "entity_id": {
+          "name": "Entiteit",
+          "description": "De entiteit waarvoor voorkeuren worden opgehaald."
+        }
+      }
+    },
+    "set_preferences": {
+      "name": "Voorkeuren instellen",
+      "description": "Sla voorkeuren op voor een entiteit.",
+      "fields": {
+        "entity_id": {
+          "name": "Entiteit",
+          "description": "De entiteit waarvoor voorkeuren worden ingesteld."
+        },
+        "preferences": {
+          "name": "Voorkeuren",
+          "description": "De voorkeursgegevens om op te slaan."
+        }
+      }
+    }
+  }
+}
