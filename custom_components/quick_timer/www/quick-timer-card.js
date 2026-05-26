@@ -151,6 +151,11 @@ function getServiceLabel(hass, service) {
     if (typeof hass.localize === 'function') {
       const localized = hass.localize(`component.${d}.services.${s}.name`);
       if (localized) return localized;
+      // component.* service names are not in the frontend bundle — fall back to
+      // ui.card.common keys which ARE translated in the frontend for common actions
+      const commonKey = `ui.card.common.${s}`;
+      const common = hass.localize(commonKey);
+      if (common) return common;
     }
     // Fall back to service registry name (may be pre-translated in newer HA)
     const info = hass.services?.[d]?.[s];
