@@ -61,166 +61,72 @@ function namedColorToCss(colorName) {
   return `var(--${colorName}-color)`;
 }
 
-const ACTION_TYPES = {
-  'toggle-timer': 'Start/Cancel Timer',
-  'settings': 'Open Settings',
-  'none': 'No Action',
-};
-
-const PRIMARY_INFO_OPTIONS = {
-  name: 'Name', state: 'Entity State', 'last-changed': 'Last Changed', none: 'Hidden',
-};
-
-const SECONDARY_INFO_OPTIONS = {
-  timer: 'Timer/Countdown', state: 'Entity State', action: 'Scheduled Action', none: 'Hidden',
-};
+const ACTION_TYPES = ['toggle-timer', 'settings', 'none'];
+const PRIMARY_INFO_OPTIONS = ['name', 'state', 'last-changed', 'none'];
+const SECONDARY_INFO_OPTIONS = ['timer', 'state', 'action', 'none'];
 
 // ============================================
 // Internationalization (i18n)
 // ============================================
 
-const TRANSLATIONS = {
-  en: {
-    // Common
-    'schedule': 'Schedule', 'cancel': 'Cancel', 'delay': 'Delay', 'time': 'Time',
-    'quick_timer': 'Quick Timer', 'recent': 'Recent', 'history': 'History',
-    'action': 'Action',
-    // Units
-    'seconds': 'Seconds', 'minutes': 'Minutes', 'hours': 'Hours',
-    'sec': 'sec', 'min': 'min', 'hrs': 'hrs',
-    // Time
-    'ago_format': '{v}{u} ago', 'd': 'd', 'h': 'h', 'm': 'm', 's': 's',
-    // States
-    'on': 'On', 'off': 'Off',
-    // Card
-    'countdown_to_action': 'Countdown to action',
-    'no_active_timers': 'No active timers',
-    'add_at_least_one_target': 'Please add at least one target',
-    'n_targets_configured': '{n} targets configured',
-    'one_entity_scheduled': '1 Entity Scheduled',
-    'n_entities_scheduled': '{n} Entities Scheduled',
-    'n_actions': '{n} actions',
-    'timer': 'Timer', 'in': 'in', 'at': 'at',
-    // Notifications
-    'ha_notification': 'HA Notification', 'mobile_notification': 'Mobile Notification',
-    'mobile_notification_devices': 'Mobile Notification Devices',
-    // Editor sections
-    'targets_and_timer': 'Targets & Timer', 'appearance': 'Appearance', 'interactions': 'Interactions',
-    // Editor fields
-    'name_optional': 'Name (optional)', 'auto_from_targets': 'Auto from targets',
-    'time_mode': 'Time Mode', 'delay_relative': 'Delay (Relative)', 'time_absolute': 'Time (Absolute)',
-    'time_unit': 'Time Unit', 'default_delay': 'Default Delay', 'default_time_hhmm': 'Default Time (HH:MM)',
-    'targets_and_actions': 'Targets and actions',
-    'targets_hint_1': 'Add entity targets that will be scheduled together. Each target can execute',
-    'targets_hint_bold_1': 'on timer start',
-    'targets_hint_2': '(immediately) or',
-    'targets_hint_bold_2': 'on timer finish',
-    'targets_hint_3': '(when countdown ends).',
-    'add_target': 'Add Target',
-    'on_start': 'On Start', 'on_finish': 'On Finish',
-    'exec_on_finish': 'Execute on Finish (when timer ends)',
-    'exec_on_start': 'Execute on Start (immediately)',
-    // Display
-    'display_mode': 'Display Mode', 'compact_tile': 'Compact (Tile)', 'full': 'Full',
-    'show_progress_bar': 'Show Progress Bar', 'show_badge': 'Show Badge',
-    'icon': 'Icon', 'icon_color': 'Icon Color',
-    'primary_info': 'Primary Info', 'secondary_info': 'Secondary Info',
-    'inactive_style': 'Inactive Style',
-    'inactive_none': 'None', 'inactive_dim': 'Dim (opacity)', 'inactive_grayscale': 'Grayscale',
-    'hide_when_empty': 'Hide when empty',
-    // Interactions
-    'tap': 'Tap', 'hold': 'Hold', 'icon_tap': 'Icon Tap',
-    // Action types
-    'action_toggle_timer': 'Start/Cancel Timer', 'action_settings': 'Open Settings', 'action_none': 'No Action',
-    // Primary info options
-    'pi_name': 'Name', 'pi_state': 'Entity State', 'pi_last_changed': 'Last Changed', 'pi_none': 'Hidden',
-    // Secondary info options
-    'si_timer': 'Timer/Countdown', 'si_state': 'Entity State', 'si_action': 'Scheduled Action', 'si_none': 'Hidden',
-    // Overview
-    'quick_timers': 'Quick Timers',
-    // Phase
-    'start': 'start', 'finish': 'finish',
-    // Color
-    'color_auto': 'Auto color (by timer state)',
-    'card_title': 'Card Title',
-  },
-  sk: {
-    // Common
-    'schedule': 'Naplánovať', 'cancel': 'Zrušiť', 'delay': 'Oneskorenie', 'time': 'Čas',
-    'quick_timer': 'Quick Timer', 'recent': 'Nedávne', 'history': 'História',
-    'action': 'Akcia',
-    // Units
-    'seconds': 'Sekundy', 'minutes': 'Minúty', 'hours': 'Hodiny',
-    'sec': 'sek', 'min': 'min', 'hrs': 'hod',
-    // Time
-    'ago_format': 'pred {v}{u}', 'd': 'd', 'h': 'h', 'm': 'm', 's': 's',
-    // States
-    'on': 'Zapnuté', 'off': 'Vypnuté',
-    // Card
-    'countdown_to_action': 'Odpočet do akcie',
-    'no_active_timers': 'Žiadne aktívne časovače',
-    'add_at_least_one_target': 'Pridajte aspoň jeden cieľ',
-    'n_targets_configured': '{n} cieľov nakonfigurovaných',
-    'one_entity_scheduled': '1 entita naplánovaná',
-    'n_entities_scheduled': '{n} entít naplánovaných',
-    'n_actions': '{n} akcií',
-    'timer': 'Časovač', 'in': 'za', 'at': 'o',
-    // Notifications
-    'ha_notification': 'HA upozornenie', 'mobile_notification': 'Mobilné upozornenie',
-    'mobile_notification_devices': 'Zariadenia mobilných upozornení',
-    // Editor sections
-    'targets_and_timer': 'Ciele a časovač', 'appearance': 'Vzhľad', 'interactions': 'Interakcie',
-    // Editor fields
-    'name_optional': 'Názov (voliteľný)', 'auto_from_targets': 'Auto z cieľov',
-    'time_mode': 'Časový režim', 'delay_relative': 'Oneskorenie (Relatívne)', 'time_absolute': 'Čas (Absolútny)',
-    'time_unit': 'Časová jednotka', 'default_delay': 'Predvolené oneskorenie', 'default_time_hhmm': 'Predvolený čas (HH:MM)',
-    'targets_and_actions': 'Ciele a akcie',
-    'targets_hint_1': 'Pridajte ciele entít, ktoré budú naplánované spoločne. Každý cieľ sa môže vykonať',
-    'targets_hint_bold_1': 'pri štarte časovača',
-    'targets_hint_2': '(okamžite) alebo',
-    'targets_hint_bold_2': 'pri skončení časovača',
-    'targets_hint_3': '(keď odpočet skončí).',
-    'add_target': 'Pridať cieľ',
-    'on_start': 'Na štarte', 'on_finish': 'Na konci',
-    'exec_on_finish': 'Vykonať na konci (keď časovač skončí)',
-    'exec_on_start': 'Vykonať na štarte (okamžite)',
-    // Display
-    'display_mode': 'Režim zobrazenia', 'compact_tile': 'Kompaktný (Dlaždica)', 'full': 'Plný',
-    'show_progress_bar': 'Zobraziť priebeh', 'show_badge': 'Zobraziť odznak',
-    'icon': 'Ikona', 'icon_color': 'Farba ikony',
-    'primary_info': 'Primárna info', 'secondary_info': 'Sekundárna info',
-    'inactive_style': 'Neaktívny štýl',
-    'inactive_none': 'Žiadny', 'inactive_dim': 'Stlmený (priehľadnosť)', 'inactive_grayscale': 'Odtiene sivej',
-    'hide_when_empty': 'Skryť keď prázdne',
-    // Interactions
-    'tap': 'Ťuknutie', 'hold': 'Podržanie', 'icon_tap': 'Ťuknutie na ikonu',
-    // Action types
-    'action_toggle_timer': 'Štart/Zrušiť časovač', 'action_settings': 'Otvoriť nastavenia', 'action_none': 'Žiadna akcia',
-    // Primary info options
-    'pi_name': 'Názov', 'pi_state': 'Stav entity', 'pi_last_changed': 'Naposledy zmenené', 'pi_none': 'Skrytý',
-    // Secondary info options
-    'si_timer': 'Časovač/Odpočet', 'si_state': 'Stav entity', 'si_action': 'Naplánovaná akcia', 'si_none': 'Skrytý',
-    // Overview
-    'quick_timers': 'Quick Timers',
-    // Phase
-    'start': 'štart', 'finish': 'koniec',
-    // Color
-    'color_auto': 'Automatická farba (podľa stavu)',
-    'card_title': 'Názov karty',
-  },
-};
-
+const TRANSLATION_BASE_URL = '/quick_timer_static/translations';
+const TRANSLATIONS = {};
+const TRANSLATION_LOADS = new Map();
 let _qtLang = 'en';
+let _qtRequestedLang = 'en';
 
-function updateLanguage(hass) {
-  if (hass?.language) {
-    _qtLang = TRANSLATIONS[hass.language] ? hass.language : 'en';
+function normalizeLanguage(language) {
+  return String(language || 'en').trim().toLowerCase().replace(/_/g, '-');
+}
+
+async function fetchTranslation(language) {
+  const normalized = normalizeLanguage(language);
+  if (TRANSLATIONS[normalized]) return TRANSLATIONS[normalized];
+  if (TRANSLATION_LOADS.has(normalized)) return TRANSLATION_LOADS.get(normalized);
+
+  const load = fetch(`${TRANSLATION_BASE_URL}/${encodeURIComponent(normalized)}.json?v=${encodeURIComponent(CARD_VERSION)}`, {
+    credentials: 'same-origin',
+  })
+    .then((response) => response.ok ? response.json() : null)
+    .then((messages) => {
+      if (messages && typeof messages === 'object' && !Array.isArray(messages)) {
+        TRANSLATIONS[normalized] = messages;
+        return messages;
+      }
+      return null;
+    })
+    .catch(() => null);
+
+  TRANSLATION_LOADS.set(normalized, load);
+  return load;
+}
+
+async function updateLanguage(hass, onLoaded) {
+  const requested = normalizeLanguage(hass?.language);
+  _qtRequestedLang = requested;
+  const candidates = [...new Set([requested, requested.split('-')[0], 'en'])];
+  const wasReady = Boolean(TRANSLATIONS.en && candidates.some((candidate) => TRANSLATIONS[candidate]));
+
+  await fetchTranslation('en');
+  let selected = 'en';
+  for (const candidate of candidates) {
+    if (await fetchTranslation(candidate)) {
+      selected = candidate;
+      break;
+    }
   }
+
+  if (requested !== _qtRequestedLang) return;
+  const changed = _qtLang !== selected;
+  _qtLang = selected;
+  if (changed || !wasReady) onLoaded?.();
 }
 
 function t(key) {
-  return TRANSLATIONS[_qtLang]?.[key] || TRANSLATIONS['en']?.[key] || key;
+  return TRANSLATIONS[_qtLang]?.[key] || TRANSLATIONS.en?.[key] || key;
 }
+
+fetchTranslation('en');
 
 // ============================================
 // Helpers
@@ -244,6 +150,8 @@ function getServiceLabel(hass, service) {
     if (typeof hass.localize === 'function') {
       const localized = hass.localize(`component.${d}.services.${s}.name`);
       if (localized) return localized;
+      const common = hass.localize(`ui.card.common.${s}`);
+      if (common) return common;
     }
     // Fall back to service registry name (may be pre-translated in newer HA)
     const info = hass.services?.[d]?.[s];
@@ -735,12 +643,13 @@ class QuickTimerCardEditor extends LitElement {
     const renderTarget = (target, globalIdx) => {
       const targetServices = target.entity ? getServicesForEntity(this.hass, target.entity) : [];
       const targetFields = target.service ? getServiceFields(this.hass, target.service, target.entity) : {};
-      const isStart = target.phase === 'start';
+      const phase = target.phase === 'start' ? 'start' : 'finish';
+      const phaseLabel = phase === 'start' ? t('on_start') : t('on_finish');
       return html`
         <div class="target-card">
           <div class="target-header">
             <span class="target-num">#${globalIdx + 1}</span>
-            <span class="target-phase ${isStart ? 'start' : 'finish'}">${isStart ? t('on_start') : t('on_finish')}</span>
+            <span class="target-phase ${phase}">${phaseLabel}</span>
             <ha-icon class="target-remove" icon="mdi:delete" @click=${() => this._removeTarget(globalIdx)}></ha-icon>
           </div>
           <div style="margin-bottom: 8px;">
@@ -768,7 +677,7 @@ class QuickTimerCardEditor extends LitElement {
               `)}
             ` : ''}
             <div style="margin-top: 6px;">
-              <ha-select .value=${target.phase || 'finish'} .options=${[{ value: 'finish', label: t('exec_on_finish') }, { value: 'start', label: t('exec_on_start') }]} @selected=${(e) => this._targetChanged(globalIdx, 'phase', e.detail.value)} style="width: 100%;"></ha-select>
+              <ha-select .value=${phase} .options=${[{ value: 'finish', label: t('exec_on_finish') }, { value: 'start', label: t('exec_on_start') }]} @selected=${(e) => this._targetChanged(globalIdx, 'phase', e.detail.value)} style="width: 100%;"></ha-select>
             </div>
           ` : ''}
         </div>
@@ -815,6 +724,15 @@ class QuickTimerCardEditor extends LitElement {
           ${t('add_target')}
         </button>
       </div>
+      <div class="editor-row" style="margin-top: 16px;">
+        <label>${t('revert_mode')}</label>
+        <ha-select .value=${this._config.revert || 'off'} .options=${[{ value: 'off', label: t('revert_off') }, { value: 'finish', label: t('revert_finish') }, { value: 'cancel', label: t('revert_cancel') }, { value: 'both', label: t('revert_both') }]} @selected=${(e) => this._valueChanged('revert', e.detail.value)}></ha-select>
+        <div class="hint">${t('revert_hint')}</div>
+      </div>
+      <div class="editor-row switch-row">
+        <label>${t('sync_with_more_info')}</label>
+        <ha-switch .checked=${this._config.sync_with_more_info !== false} @change=${(e) => this._valueChanged('sync_with_more_info', e.target.checked)}></ha-switch>
+      </div>
       <div class="inline-row">
         <div class="editor-row switch-row">
           <label>${t('ha_notification')}</label>
@@ -830,7 +748,7 @@ class QuickTimerCardEditor extends LitElement {
 
   render() {
     if (!this.hass || !this._config) return html``;
-    updateLanguage(this.hass);
+    updateLanguage(this.hass, () => this.requestUpdate());
 
     const appearanceSection = html`
       <div class="editor-row">
@@ -864,11 +782,11 @@ class QuickTimerCardEditor extends LitElement {
       <div class="inline-row">
         <div class="editor-row">
           <label>${t('primary_info')}</label>
-          <ha-select .value=${this._config.primary_info || 'name'} .options=${Object.keys(PRIMARY_INFO_OPTIONS).map(k => ({ value: k, label: t('pi_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._valueChanged('primary_info', e.detail.value)}></ha-select>
+          <ha-select .value=${this._config.primary_info || 'name'} .options=${PRIMARY_INFO_OPTIONS.map(k => ({ value: k, label: t('pi_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._valueChanged('primary_info', e.detail.value)}></ha-select>
         </div>
         <div class="editor-row">
           <label>${t('secondary_info')}</label>
-          <ha-select .value=${this._config.secondary_info || 'timer'} .options=${Object.keys(SECONDARY_INFO_OPTIONS).map(k => ({ value: k, label: t('si_' + k) }))} @selected=${(e) => this._valueChanged('secondary_info', e.detail.value)}></ha-select>
+          <ha-select .value=${this._config.secondary_info || 'timer'} .options=${SECONDARY_INFO_OPTIONS.map(k => ({ value: k, label: t('si_' + k) }))} @selected=${(e) => this._valueChanged('secondary_info', e.detail.value)}></ha-select>
         </div>
       </div>
       <div class="editor-row">
@@ -881,17 +799,17 @@ class QuickTimerCardEditor extends LitElement {
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:gesture-tap"></ha-icon>
         <span class="action-label">${t('tap')}</span>
-        <ha-select .value=${this._config.tap_action?.action || 'toggle-timer'} .options=${Object.keys(ACTION_TYPES).map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('tap_action', e.detail.value)}></ha-select>
+        <ha-select .value=${this._config.tap_action?.action || 'toggle-timer'} .options=${ACTION_TYPES.map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('tap_action', e.detail.value)}></ha-select>
       </div>
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:gesture-tap-hold"></ha-icon>
         <span class="action-label">${t('hold')}</span>
-        <ha-select .value=${this._config.hold_action?.action || 'settings'} .options=${Object.keys(ACTION_TYPES).map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('hold_action', e.detail.value)}></ha-select>
+        <ha-select .value=${this._config.hold_action?.action || 'settings'} .options=${ACTION_TYPES.map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('hold_action', e.detail.value)}></ha-select>
       </div>
       <div class="action-row">
         <ha-icon class="action-icon" icon="mdi:circle-outline"></ha-icon>
         <span class="action-label">${t('icon_tap')}</span>
-        <ha-select .value=${this._config.icon_tap_action?.action || 'settings'} .options=${Object.keys(ACTION_TYPES).map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('icon_tap_action', e.detail.value)}></ha-select>
+        <ha-select .value=${this._config.icon_tap_action?.action || 'settings'} .options=${ACTION_TYPES.map(k => ({ value: k, label: t('action_' + k.replace(/-/g, '_')) }))} @selected=${(e) => this._actionChanged('icon_tap_action', e.detail.value)}></ha-select>
       </div>
     `;
 
@@ -926,6 +844,7 @@ class QuickTimerCard extends LitElement {
       _startTimestamp: { type: Number },
       _progress: { type: Number },
       _currentTaskId: { type: String },
+      _isPaused: { type: Boolean },
       _loading: { type: Boolean },
       _showSettings: { type: Boolean },
       _notifyHa: { type: Boolean },
@@ -1001,6 +920,11 @@ class QuickTimerCard extends LitElement {
       .countdown-cancel-btn { padding: 10px 20px; border: none; border-radius: 8px; background: var(--error-color, #db4437); color: white; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
       .countdown-cancel-btn:hover:not(:disabled) { opacity: 0.9; }
       .countdown-cancel-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      .countdown-pause-btn { padding: 10px 14px; border: none; border-radius: 8px; background: var(--primary-color); color: white; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px; }
+      .countdown-pause-btn:hover:not(:disabled) { opacity: 0.9; }
+      .countdown-pause-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      .countdown-pause-btn ha-icon { --mdc-icon-size: 16px; }
+      .countdown-buttons { display: flex; gap: 6px; }
       .timer-controls { display: flex; flex-direction: column; gap: 12px; }
       .timer-chips { display: flex; gap: 6px; flex-wrap: wrap; }
       .timer-chip { padding: 6px 12px; border: 1px solid var(--divider-color); border-radius: 16px; background: transparent; color: var(--primary-text-color); font-size: 12px; cursor: pointer; transition: all 0.2s; }
@@ -1107,6 +1031,7 @@ class QuickTimerCard extends LitElement {
 
   _updateCountdown() {
     if (!this._isScheduled || !this._endTimestamp) return;
+    if (this._isPaused) return;  // Frozen while paused
     const remaining = Math.max(0, this._endTimestamp - Date.now() / 1000);
     this._remainingSeconds = remaining;
     
@@ -1127,7 +1052,7 @@ class QuickTimerCard extends LitElement {
 
   updated(changedProperties) {
     if (changedProperties.has('hass')) {
-      updateLanguage(this.hass);
+      updateLanguage(this.hass, () => this.requestUpdate());
       this._checkScheduledTask();
       this._updateCountdown();
       this._loadHistory();
@@ -1152,6 +1077,14 @@ class QuickTimerCard extends LitElement {
   }
 
   _getCardId() {
+    // When syncing with the more-info dialog (which keys tasks by entity_id),
+    // a single-entity card uses that entity_id as its task_id so both views
+    // share the exact same timer.
+    if (this.config.sync_with_more_info !== false) {
+      const entities = [...new Set((this.config.targets || []).map(tg => tg.entity).filter(Boolean))];
+      if (entities.length === 1) return entities[0];
+      if (entities.length === 0 && this.config.entity) return this.config.entity;
+    }
     return this.config.card_id || this.config.entity || 'unknown';
   }
 
@@ -1186,7 +1119,12 @@ class QuickTimerCard extends LitElement {
 
     if (activeTask) {
       this._isScheduled = true;
+      this._isPaused = !!activeTask.paused;
       this._endTimestamp = activeTask.end_timestamp || 0;
+      if (this._isPaused) {
+        // Frozen: show stored remaining time, no live countdown.
+        this._remainingSeconds = activeTask.remaining_seconds || 0;
+      }
       
       // Nastavenie počiatočného času pre Progress Bar
       if (this._currentTaskId !== activeTaskId || !this._startTimestamp) {
@@ -1196,6 +1134,7 @@ class QuickTimerCard extends LitElement {
       }
     } else {
       this._isScheduled = false;
+      this._isPaused = false;
       this._currentTaskId = null;
       this._progress = 0;
     }
@@ -1270,6 +1209,15 @@ class QuickTimerCard extends LitElement {
 
       if (start_actions.length > 0) payload.start_actions = start_actions;
 
+      // Temporary / revert mode
+      const revert = this.config.revert || 'off';
+      if (revert && revert !== 'off') {
+        payload.revert = revert;
+        if (Array.isArray(this.config.revert_entities) && this.config.revert_entities.length > 0) {
+          payload.revert_entities = this.config.revert_entities;
+        }
+      }
+
       if (this._timeMode === TIME_MODE_ABSOLUTE) {
         payload.at_time = this._atTime;
       } else {
@@ -1295,6 +1243,30 @@ class QuickTimerCard extends LitElement {
       this._remainingSeconds = 0;
       if (navigator.vibrate) navigator.vibrate([30, 30, 30]);
     } catch (e) { console.error('[Quick Timer] Cancel failed:', e); }
+    finally { this._loading = false; this.requestUpdate(); }
+  }
+
+  async _pauseSchedule() {
+    if (!this.hass || this._loading) return;
+    this._loading = true;
+    this.requestUpdate();
+    try {
+      await this.hass.callService('quick_timer', 'pause_action', { task_id: this._getCardId() });
+      this._isPaused = true;
+      if (navigator.vibrate) navigator.vibrate(30);
+    } catch (e) { console.error('[Quick Timer] Pause failed:', e); }
+    finally { this._loading = false; this.requestUpdate(); }
+  }
+
+  async _resumeSchedule() {
+    if (!this.hass || this._loading) return;
+    this._loading = true;
+    this.requestUpdate();
+    try {
+      await this.hass.callService('quick_timer', 'resume_action', { task_id: this._getCardId() });
+      this._isPaused = false;
+      if (navigator.vibrate) navigator.vibrate(30);
+    } catch (e) { console.error('[Quick Timer] Resume failed:', e); }
     finally { this._loading = false; this.requestUpdate(); }
   }
 
@@ -1637,13 +1609,18 @@ class QuickTimerCard extends LitElement {
 
         ${this._isScheduled ? html`
           <div class="countdown-container">
-            <ha-icon class="countdown-icon" icon="mdi:timer-sand"></ha-icon>
+            <ha-icon class="countdown-icon" icon="${this._isPaused ? 'mdi:pause-circle-outline' : 'mdi:timer-sand'}"></ha-icon>
             <div class="countdown-info">
-              <div class="countdown-label">${t('countdown_to_action')}</div>
+              <div class="countdown-label">${this._isPaused ? t('paused') : t('countdown_to_action')}</div>
               <div class="countdown-time">${formatCountdown(this._remainingSeconds)}</div>
             </div>
             <div class="countdown-action">${displayLabel}</div>
-            <button class="countdown-cancel-btn" @click=${() => this._cancelSchedule()} ?disabled=${this._loading}>${this._loading ? '...' : t('cancel')}</button>
+            <div class="countdown-buttons">
+              <button class="countdown-pause-btn" @click=${() => this._isPaused ? this._resumeSchedule() : this._pauseSchedule()} ?disabled=${this._loading}>
+                <ha-icon icon="${this._isPaused ? 'mdi:play' : 'mdi:pause'}"></ha-icon>${this._isPaused ? t('resume') : t('pause')}
+              </button>
+              <button class="countdown-cancel-btn" @click=${() => this._cancelSchedule()} ?disabled=${this._loading}>${this._loading ? '...' : t('cancel')}</button>
+            </div>
           </div>
         ` : html`
           <div class="timer-controls">
@@ -1822,7 +1799,7 @@ class QuickTimerOverviewCard extends LitElement {
 
   updated(changedProperties) {
     if (changedProperties.has('hass')) {
-      updateLanguage(this.hass);
+      updateLanguage(this.hass, () => this.requestUpdate());
       this._tasks = this.hass?.states[MONITOR_ENTITY]?.attributes?.active_tasks || {};
     }
   }
@@ -2118,7 +2095,11 @@ class QuickTimerDialogInjector {
       const result = this._findMoreInfoContent();
       if (!result) { this._cleanup(); return; }
       const { target, entityId } = result;
-      updateLanguage(hass);
+      updateLanguage(hass, () => {
+        const current = this._findMoreInfoContent();
+        if (current) this._removePanel(current.target);
+        this._scheduleInjection();
+      });
       if (!isSupportedForQuickTimer(hass, entityId)) { this._removePanel(target); return; }
 
       const existingPanel = target.querySelector(`#${INJECTED_PANEL_ID}`);
@@ -2171,17 +2152,35 @@ class QuickTimerDialogInjector {
   _updateCountdownDisplay(panel, task) {
     const timeDisplay = panel.querySelector('.qt-countdown-time');
     const actionLabel = panel.querySelector('.qt-countdown-action');
-    if (!task.end_timestamp) return;
-    const remaining = Math.max(0, task.end_timestamp - Date.now() / 1000);
-    if (timeDisplay) timeDisplay.textContent = formatCountdown(remaining);
+    const pauseBtn = panel.querySelector('.qt-btn-pause');
+    const countdownIcon = panel.querySelector('.qt-countdown-icon');
+
+    // Reflect paused/running state on the pause button + icon
+    if (pauseBtn) pauseBtn.textContent = task.paused ? t('resume') : t('pause');
+    if (countdownIcon) countdownIcon.setAttribute('icon', task.paused ? 'mdi:pause-circle-outline' : 'mdi:timer-sand');
+
     if (actionLabel) {
       // Show finish_actions label if available
       if (task.finish_actions?.length > 0) {
         actionLabel.textContent = getServiceLabel(this._getHass(), task.finish_actions[0].service);
+      } else if (task.start_actions?.length > 0) {
+        // Revert (temporary) tasks run the action on start, then restore on finish.
+        actionLabel.textContent = getServiceLabel(this._getHass(), task.start_actions[0].service);
       } else {
         actionLabel.textContent = getServiceLabel(this._getHass(), task.service || task.action);
       }
     }
+
+    // Paused tasks: show the frozen remaining time and stop the live countdown.
+    if (task.paused) {
+      if (timeDisplay) timeDisplay.textContent = formatCountdown(task.remaining_seconds || 0);
+      if (panel._countdownInterval) { clearInterval(panel._countdownInterval); panel._countdownInterval = null; }
+      return;
+    }
+
+    if (!task.end_timestamp) return;
+    const remaining = Math.max(0, task.end_timestamp - Date.now() / 1000);
+    if (timeDisplay) timeDisplay.textContent = formatCountdown(remaining);
     if (remaining <= 0) {
       if (panel._countdownInterval) { clearInterval(panel._countdownInterval); panel._countdownInterval = null; }
       const eid = panel.dataset.entityId;
@@ -2278,6 +2277,9 @@ class QuickTimerDialogInjector {
         #${INJECTED_PANEL_ID} .qt-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         #${INJECTED_PANEL_ID} .qt-btn-primary { background: var(--primary-color); color: white; }
         #${INJECTED_PANEL_ID} .qt-btn-cancel { background: var(--error-color, #db4437); color: white; padding: 8px 16px; }
+        #${INJECTED_PANEL_ID} .qt-btn-pause { background: var(--primary-color); color: white; padding: 8px 14px; }
+        #${INJECTED_PANEL_ID} .qt-countdown-buttons { display: flex; gap: 6px; }
+        #${INJECTED_PANEL_ID} .qt-revert-hint { font-size: 11px; color: var(--secondary-text-color); margin: -4px 0 2px; }
       </style>
       <div class="qt-header">
         <ha-icon icon="mdi:timer-outline"></ha-icon>
@@ -2296,7 +2298,10 @@ class QuickTimerDialogInjector {
             <div class="qt-countdown-time">00:00:00</div>
             <div class="qt-countdown-action"></div>
           </div>
-          <button class="qt-btn qt-btn-cancel">${t('cancel')}</button>
+          <div class="qt-countdown-buttons">
+            <button class="qt-btn qt-btn-pause">${t('pause')}</button>
+            <button class="qt-btn qt-btn-cancel">${t('cancel')}</button>
+          </div>
         </div>
         <div class="qt-controls">
           <div class="qt-mode-row">
@@ -2323,6 +2328,16 @@ class QuickTimerDialogInjector {
           </div>
           <div class="qt-service-fields"></div>
           <div class="qt-device-selector"></div>
+          <div class="qt-row qt-revert-row">
+            <span class="qt-field-label">${t('revert_mode')}</span>
+            <select class="qt-select qt-revert-select" style="flex: 1;">
+              <option value="off">${t('revert_off')}</option>
+              <option value="finish">${t('revert_finish')}</option>
+              <option value="cancel">${t('revert_cancel')}</option>
+              <option value="both">${t('revert_both')}</option>
+            </select>
+          </div>
+          <div class="qt-revert-hint" style="display: none;">${t('revert_hint')}</div>
           <div class="qt-row">
             <div class="qt-notify">
               <button class="qt-notify-btn qt-notify-ha ${initialNotifyHa ? 'active' : ''}" title="${t('ha_notification')}"><ha-icon icon="mdi:bell${initialNotifyHa ? '' : '-off-outline'}"></ha-icon></button>
@@ -2357,12 +2372,15 @@ class QuickTimerDialogInjector {
     const historyItems = panel.querySelector('.qt-history-items');
     const serviceFieldsContainer = panel.querySelector('.qt-service-fields');
     const deviceSelectorContainer = panel.querySelector('.qt-device-selector');
+    const revertSelect = panel.querySelector('.qt-revert-select');
+    const revertHint = panel.querySelector('.qt-revert-hint');
 
     let notifyHa = initialNotifyHa;
     let notifyMobile = initialNotifyMobile;
     let notifyDeviceIds = [];
     let currentTimeMode = initialTimeMode;
     let currentServiceData = {};  // Stores service field values
+    let currentRevert = 'off';    // Revert mode: off|finish|cancel|both
 
     const updateDeviceSelectorVisibility = () => {
       if (deviceSelectorContainer) {
@@ -2413,6 +2431,9 @@ class QuickTimerDialogInjector {
           selector.label = field.name || key.replace(/_/g, ' ');
           selector.addEventListener('value-changed', (e) => {
             const val = e.detail.value;
+            // ha-selector is a controlled component — reassign its value so the
+            // selection is actually displayed (e.g. climate fan mode "high").
+            selector.value = val;
             if (val === '' || val === null || val === undefined || (typeof val === 'number' && isNaN(val))) {
               delete currentServiceData[key];
             } else {
@@ -2448,6 +2469,19 @@ class QuickTimerDialogInjector {
 
     // Initialize service fields for the current service
     updateServiceFields(initialService);
+
+    // Revert mode select
+    if (revertSelect) {
+      revertSelect.value = currentRevert;
+      const updateRevertHint = () => {
+        if (revertHint) revertHint.style.display = currentRevert === 'off' ? 'none' : 'block';
+      };
+      revertSelect.addEventListener('change', () => {
+        currentRevert = revertSelect.value;
+        updateRevertHint();
+      });
+      updateRevertHint();
+    }
 
     // History chips
     const renderHistory = (entries) => {
@@ -2583,17 +2617,17 @@ class QuickTimerDialogInjector {
       try {
         const selectedService = currentTimeMode === TIME_MODE_ABSOLUTE ? serviceSelectAbs.value : serviceSelect.value;
 
-        // Build action arrays for the injected panel (single entity)
-        const finish_actions = [];
+        // Build the primary action for the injected panel (single entity)
+        const primaryActions = [];
         if (selectedService) {
-          finish_actions.push({ service: selectedService, target: { entity_id: entityId }, data: { ...currentServiceData } });
+          primaryActions.push({ service: selectedService, target: { entity_id: entityId }, data: { ...currentServiceData } });
         } else {
           // Fallback
           const defaultSvc = getDefaultServiceForEntity(hass, entityId);
-          if (defaultSvc) finish_actions.push({ service: defaultSvc, target: { entity_id: entityId }, data: { ...currentServiceData } });
+          if (defaultSvc) primaryActions.push({ service: defaultSvc, target: { entity_id: entityId }, data: { ...currentServiceData } });
         }
 
-        if (finish_actions.length === 0) {
+        if (primaryActions.length === 0) {
           console.error('[Quick Timer] No service selected');
           startBtn.innerHTML = origContent; startBtn.disabled = false;
           return;
@@ -2603,12 +2637,21 @@ class QuickTimerDialogInjector {
         const payload = {
           task_id: entityId, // Injected panels use entity_id as task_id for cross-device compatibility
           task_label: entityFriendlyName,
-          finish_actions: finish_actions,
           notify_ha: notifyHa,
           notify_mobile: notifyMobile,
           notify_devices: notifyDeviceIds,
           time_mode: currentTimeMode,
         };
+
+        // Revert (temporary) mode: run the action NOW (start) and restore later.
+        // Otherwise the action runs when the timer ends (finish).
+        if (currentRevert && currentRevert !== 'off') {
+          payload.start_actions = primaryActions;
+          payload.finish_actions = [];
+          payload.revert = currentRevert;
+        } else {
+          payload.finish_actions = primaryActions;
+        }
 
         if (currentTimeMode === TIME_MODE_ABSOLUTE) {
           payload.at_time = atTimeInput.value;
@@ -2647,6 +2690,25 @@ class QuickTimerDialogInjector {
       }
     });
 
+    const pauseBtn = panel.querySelector('.qt-btn-pause');
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', async () => {
+        const hass = this._getHass();
+        if (!hass) return;
+        const task = this._getActiveTask(entityId);
+        const isPaused = !!task?.paused;
+        pauseBtn.disabled = true;
+        try {
+          await hass.callService('quick_timer', isPaused ? 'resume_action' : 'pause_action', { task_id: entityId });
+          if (navigator.vibrate) navigator.vibrate(30);
+          setTimeout(() => { pauseBtn.disabled = false; this._updatePanelState(panel, entityId); }, 400);
+        } catch (e) {
+          console.error('[Quick Timer] Pause/resume failed:', e);
+          pauseBtn.disabled = false;
+        }
+      });
+    }
+
     // Sync preferences from sensor (cross-device)
     if (hass) {
       const sensorPrefs = preferencesManager.getFromSensor(hass, entityId);
@@ -2678,4 +2740,10 @@ class QuickTimerDialogInjector {
   }
 }
 
-new QuickTimerDialogInjector();
+// Guard against multiple module loads (the resource URL gets a cache-busting
+// query string on every integration reload, so a long-lived browser tab can
+// otherwise instantiate several injectors — causing duplicate panels,
+// double-speed countdowns and repeated service calls).
+if (!window.__quickTimerDialogInjector) {
+  window.__quickTimerDialogInjector = new QuickTimerDialogInjector();
+}

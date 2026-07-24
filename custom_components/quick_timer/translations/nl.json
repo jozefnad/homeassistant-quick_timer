@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Quick Timer",
+        "description": "Met deze integratie kun je eenmalige acties voor elke entiteit met een afteltimer plannen. Klik op verzenden om te installeren."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Er is slechts één instantie van Quick Timer toegestaan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Quick Timer-instellingen",
+        "description": "Configureer de tijdpresets die in de timerkaart worden weergegeven. Voer door komma's gescheiden waarden in.",
+        "data": {
+          "preset_seconds": "Secondepresets",
+          "preset_minutes": "Minuutpresets",
+          "preset_hours": "Uurpresets",
+          "enable_dialog_injection": "Quick Timer-paneel in entiteitsdialogen inschakelen"
+        }
+      }
+    }
+  },
+  "services": {
+    "run_action": {
+      "name": "Actie uitvoeren",
+      "description": "Plan een eenmalige actie met een afteltimer.",
+      "fields": {
+        "task_id": { "name": "Taak-ID", "description": "Unieke identificatie voor deze timertaak." },
+        "task_label": { "name": "Taaklabel", "description": "Een leesbaar label voor deze timertaak." },
+        "finish_actions": { "name": "Eindeacties", "description": "Acties die worden uitgevoerd wanneer de timer eindigt." },
+        "start_actions": { "name": "Startacties", "description": "Acties die direct worden uitgevoerd wanneer de timer start." },
+        "revert": { "name": "Herstelmodus", "description": "Wanneer de vorige status wordt hersteld: uit, einde, annuleren of beide." },
+        "revert_entities": { "name": "Herstele entiteiten", "description": "Entiteiten waarvan de status wordt opgeslagen en hersteld. Standaard de actiedoelen." },
+        "delay": { "name": "Vertraging", "description": "De vertraging voordat de actie wordt uitgevoerd." },
+        "unit": { "name": "Eenheid", "description": "Tijdseenheid voor de vertraging (seconden, minuten, uren)." },
+        "time_mode": { "name": "Tijdsmodus", "description": "Relatieve vertraging of absolute tijd gebruiken." },
+        "at_time": { "name": "Op tijdstip", "description": "Absolute tijd in HH:MM-notatie (bij absolute tijdsmodus)." },
+        "notify_ha": { "name": "HA-melding", "description": "Een permanente HA-melding verzenden." },
+        "notify_mobile": { "name": "Mobiele melding", "description": "Een mobiele pushmelding naar alle apparaten verzenden." },
+        "notify_devices": { "name": "Melding naar apparaten", "description": "Specifieke mobiele apparaten voor pushmeldingen." }
+      }
+    },
+    "cancel_action": {
+      "name": "Actie annuleren",
+      "description": "Een geplande timertaak annuleren.",
+      "fields": { "task_id": { "name": "Taak-ID", "description": "Het te annuleren taak-ID." } }
+    },
+    "pause_action": {
+      "name": "Actie pauzeren",
+      "description": "Een lopende timertaak pauzeren en de resterende tijd bevriezen.",
+      "fields": { "task_id": { "name": "Taak-ID", "description": "Het te pauzeren taak-ID." } }
+    },
+    "resume_action": {
+      "name": "Actie hervatten",
+      "description": "Een gepauzeerde timertaak hervatten.",
+      "fields": { "task_id": { "name": "Taak-ID", "description": "Het te hervatten taak-ID." } }
+    },
+    "get_preferences": {
+      "name": "Voorkeuren ophalen",
+      "description": "Opgeslagen voorkeuren voor een entiteit ophalen.",
+      "fields": { "entity_id": { "name": "Entiteit", "description": "De entiteit waarvoor voorkeuren worden opgehaald." } }
+    },
+    "set_preferences": {
+      "name": "Voorkeuren instellen",
+      "description": "Voorkeuren voor een entiteit opslaan.",
+      "fields": {
+        "entity_id": { "name": "Entiteit", "description": "De entiteit waarvoor voorkeuren worden ingesteld." },
+        "preferences": { "name": "Voorkeuren", "description": "De op te slaan voorkeursgegevens." }
+      }
+    }
+  }
+}

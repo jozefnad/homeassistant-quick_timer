@@ -11,6 +11,8 @@ PREFERENCES_STORAGE_VERSION = 1
 # Service names
 SERVICE_RUN_ACTION = "run_action"
 SERVICE_CANCEL_ACTION = "cancel_action"
+SERVICE_PAUSE_ACTION = "pause_action"
+SERVICE_RESUME_ACTION = "resume_action"
 SERVICE_GET_PREFERENCES = "get_preferences"
 SERVICE_SET_PREFERENCES = "set_preferences"
 
@@ -28,7 +30,15 @@ ATTR_TIME_MODE = "time_mode"  # 'relative' or 'absolute'
 ATTR_PREFERENCES = "preferences"
 ATTR_START_ACTIONS = "start_actions"  # List of actions to execute on start (optional)
 ATTR_FINISH_ACTIONS = "finish_actions"  # List of actions to execute on finish (required)
+ATTR_REVERT = "revert"  # Revert mode: 'off' | 'finish' | 'cancel' | 'both'
+ATTR_REVERT_ENTITIES = "revert_entities"  # Entities to snapshot/restore for revert mode
 ATTR_TASK_LABEL = "task_label"  # Human-readable label for the task (for overview)
+
+# Revert modes (temporary / restore-previous-state mode)
+REVERT_OFF = "off"
+REVERT_ON_FINISH = "finish"
+REVERT_ON_CANCEL = "cancel"
+REVERT_BOTH = "both"
 
 # Time modes
 TIME_MODE_RELATIVE = "relative"
@@ -47,3 +57,5 @@ SENSOR_ENTITY_ID = "sensor.quick_timer_monitor"
 EVENT_TASK_STARTED = "quick_timer_task_started"
 EVENT_TASK_COMPLETED = "quick_timer_task_completed"
 EVENT_TASK_CANCELLED = "quick_timer_task_cancelled"
+EVENT_TASK_PAUSED = "quick_timer_task_paused"
+EVENT_TASK_RESUMED = "quick_timer_task_resumed"

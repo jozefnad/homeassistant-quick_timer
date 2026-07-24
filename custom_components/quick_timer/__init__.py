@@ -36,6 +36,8 @@ from .const import (
     ATTR_NOTIFY_MOBILE,
     ATTR_NOTIFY_DEVICES,
     ATTR_PREFERENCES,
+    ATTR_REVERT,
+    ATTR_REVERT_ENTITIES,
     ATTR_START_ACTIONS,
     ATTR_TASK_ID,
     ATTR_TASK_LABEL,
@@ -44,9 +46,17 @@ from .const import (
     DOMAIN,
     EVENT_TASK_CANCELLED,
     EVENT_TASK_COMPLETED,
+    EVENT_TASK_PAUSED,
+    EVENT_TASK_RESUMED,
     EVENT_TASK_STARTED,
+    REVERT_BOTH,
+    REVERT_OFF,
+    REVERT_ON_CANCEL,
+    REVERT_ON_FINISH,
     SERVICE_CANCEL_ACTION,
     SERVICE_GET_PREFERENCES,
+    SERVICE_PAUSE_ACTION,
+    SERVICE_RESUME_ACTION,
     SERVICE_RUN_ACTION,
     SERVICE_SET_PREFERENCES,
     TIME_MODE_ABSOLUTE,
@@ -77,6 +87,10 @@ RUN_ACTION_SCHEMA = vol.Schema(
         vol.Optional(ATTR_TASK_LABEL): cv.string,  # Human-readable label for overview
         vol.Optional(ATTR_START_ACTIONS): vol.All(cv.ensure_list, [dict]),  # Execute on start (optional)
         vol.Optional(ATTR_FINISH_ACTIONS): vol.All(cv.ensure_list, [dict]),  # Execute on finish (required)
+        vol.Optional(ATTR_REVERT, default=REVERT_OFF): vol.In(
+            [REVERT_OFF, REVERT_ON_FINISH, REVERT_ON_CANCEL, REVERT_BOTH]
+        ),
+        vol.Optional(ATTR_REVERT_ENTITIES): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(ATTR_NOTIFY, default=False): cv.boolean,
         vol.Optional(ATTR_NOTIFY_HA, default=False): cv.boolean,
         vol.Optional(ATTR_NOTIFY_MOBILE, default=False): cv.boolean,
@@ -98,6 +112,18 @@ def convert_to_seconds(delay: int, unit: str) -> int:
 
 
 CANCEL_ACTION_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_TASK_ID): cv.string,
+    }
+)
+
+PAUSE_ACTION_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_TASK_ID): cv.string,
+    }
+)
+
+RESUME_ACTION_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_TASK_ID): cv.string,
     }
@@ -164,6 +190,8 @@ class QuickTimerCoordinator:
         unit: str,
         finish_actions: list[dict[str, Any]],
         start_actions: list[dict[str, Any]] | None = None,
+        revert: str = REVERT_OFF,
+        revert_entities: list[str] | None = None,
         notify: bool = False,
         notify_ha: bool = False,
         notify_mobile: bool = False,
@@ -173,11 +201,64 @@ class QuickTimerCoordinator:
         task_label: str | None = None,
     ) -> None:
         """Schedule a task with start_actions (optional) and finish_actions (required)."""
+        # Capture an existing revert snapshot BEFORE cancelling, so that
+        # re-scheduling a task that is already in a temporary (revert) state
+        # preserves the ORIGINAL pre-change state instead of the temporary one.
+        existing_task = self.store.get_task(task_id)
+        prev_revert_scene = (existing_task or {}).get("revert_scene")
+        prev_revert_actions = (existing_task or {}).get("revert_actions")
+
         # Cancel any existing task with this ID
         await self.async_cancel_action(task_id, silent=True)
 
+        finish_actions = finish_actions or []
+
+        # If revert mode is enabled, snapshot the current state of the relevant
+        # entities BEFORE running start actions, so we can restore it later.
+        # This must happen before start actions change the state.
+        revert = revert or REVERT_OFF
+        revert_scene: str | None = None
+        revert_actions: list[dict[str, Any]] = []
+        if revert != REVERT_OFF:
+            if prev_revert_scene or prev_revert_actions:
+                # Reuse the original snapshot (e.g. user reschedules while a
+                # temporary change is still active) so we restore the true
+                # original state, not the temporary one.
+                revert_scene = prev_revert_scene
+                revert_actions = prev_revert_actions or []
+            else:
+                # Targeted revert: capture only the attributes the start actions
+                # will overwrite (reliable for climate fan_mode, temperature, …).
+                revert_actions = self._capture_revert_actions(start_actions)
+                if not revert_actions:
+                    # No targeted revert possible (e.g. on/off services) — fall
+                    # back to a full scene snapshot.
+                    entities = revert_entities or self._derive_revert_entities(
+                        start_actions, finish_actions
+                    )
+                    if entities:
+                        revert_scene = await self._snapshot_revert_state(task_id, entities)
+                    else:
+                        _LOGGER.warning(
+                            "Revert requested for task %s but no entities could be determined",
+                            task_id,
+                        )
+
+        # Execute start actions immediately (if any). These can block for a
+        # noticeable amount of time (e.g. climate commands), so the countdown
+        # must be computed AFTER they complete.
+        if start_actions:
+            _LOGGER.info("Executing %d start actions for task %s", len(start_actions), task_id)
+            for idx, action_def in enumerate(start_actions):
+                try:
+                    await self._execute_action_definition(action_def)
+                except Exception as err:
+                    _LOGGER.error("Start action %d failed for task %s: %s", idx, task_id, err)
+
+        # Compute the countdown now (after start actions ran) so the timer
+        # reflects the full requested delay.
         now = dt_util.now()
-        
+
         # Calculate scheduled time based on mode
         if time_mode == TIME_MODE_ABSOLUTE and at_time:
             # Parse absolute time (HH:MM or HH:MM:SS format)
@@ -207,15 +288,6 @@ class QuickTimerCoordinator:
         scheduled_time_str = now.isoformat()
         end_time_str = scheduled_time.isoformat()
 
-        # Execute start actions immediately (if any)
-        if start_actions:
-            _LOGGER.info("Executing %d start actions for task %s", len(start_actions), task_id)
-            for idx, action_def in enumerate(start_actions):
-                try:
-                    await self._execute_action_definition(action_def)
-                except Exception as err:
-                    _LOGGER.error("Start action %d failed for task %s: %s", idx, task_id, err)
-
         # Store the task
         await self.store.async_add_task(
             task_id=task_id,
@@ -224,6 +296,10 @@ class QuickTimerCoordinator:
             delay_seconds=delay_seconds,
             start_actions=start_actions or [],
             finish_actions=finish_actions,
+            revert=revert,
+            revert_entities=revert_entities or [],
+            revert_scene=revert_scene,
+            revert_actions=revert_actions,
             notify=notify,
             notify_ha=notify_ha,
             notify_mobile=notify_mobile,
@@ -239,6 +315,8 @@ class QuickTimerCoordinator:
             self._create_finish_actions_callback(
                 task_id=task_id,
                 finish_actions=finish_actions,
+                revert=revert,
+                revert_scene=revert_scene,
                 notify=notify,
                 notify_ha=notify_ha,
                 notify_mobile=notify_mobile,
@@ -337,6 +415,161 @@ class QuickTimerCoordinator:
             _LOGGER.error("Failed to execute %s: %s", service, err)
             raise
 
+    def _derive_revert_entities(
+        self,
+        start_actions: list[dict[str, Any]] | None,
+        finish_actions: list[dict[str, Any]] | None,
+    ) -> list[str]:
+        """Determine which entities to snapshot for revert mode.
+
+        Prefers entities targeted by start actions (the ones being temporarily
+        changed); falls back to finish action targets.
+        """
+        entities: list[str] = []
+        for source in (start_actions or [], finish_actions or []):
+            for action_def in source:
+                target = action_def.get("target", {}) or {}
+                entity_id = target.get("entity_id")
+                if not entity_id:
+                    continue
+                if isinstance(entity_id, str):
+                    candidates = [entity_id]
+                else:
+                    candidates = list(entity_id)
+                for cand in candidates:
+                    if cand and cand not in entities:
+                        entities.append(cand)
+            if entities:
+                # Use the first non-empty source only (start actions take priority)
+                break
+        return entities
+
+    def _revert_scene_id(self, task_id: str) -> str:
+        """Build a deterministic, slug-safe scene id for a task's revert snapshot."""
+        return f"quick_timer_revert_{slugify(task_id)}"
+
+    async def _snapshot_revert_state(
+        self, task_id: str, entities: list[str]
+    ) -> str | None:
+        """Snapshot the current state of entities into a temporary scene.
+
+        Returns the full scene entity_id (e.g. 'scene.quick_timer_revert_xxx')
+        that can later be activated to restore the previous state.
+        """
+        scene_id = self._revert_scene_id(task_id)
+        try:
+            await self.hass.services.async_call(
+                "scene",
+                "create",
+                {"scene_id": scene_id, "snapshot_entities": entities},
+                blocking=True,
+            )
+            _LOGGER.info(
+                "Snapshotted revert state for task %s (entities: %s) into scene.%s",
+                task_id,
+                entities,
+                scene_id,
+            )
+            return f"scene.{scene_id}"
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to snapshot revert state for task %s: %s", task_id, err
+            )
+            return None
+
+    async def _apply_revert(self, task: dict[str, Any]) -> None:
+        """Restore a task's snapshotted state.
+
+        Prefers targeted revert actions (which restore only the specific
+        attributes the start actions changed — far more reliable than scenes
+        for entities like climate where restoring temperature/mode can reset
+        the fan). Falls back to the snapshot scene when no targeted actions
+        were captured (e.g. on/off services with no data).
+        """
+        revert_actions = task.get("revert_actions") or []
+        if revert_actions:
+            _LOGGER.info(
+                "Reverting task %s via %d targeted action(s)",
+                task.get("task_id"),
+                len(revert_actions),
+            )
+            for idx, action_def in enumerate(revert_actions):
+                try:
+                    await self._execute_action_definition(action_def)
+                except Exception as err:
+                    _LOGGER.error(
+                        "Revert action %d failed for task %s: %s",
+                        idx,
+                        task.get("task_id"),
+                        err,
+                    )
+            return
+
+        revert_scene = task.get("revert_scene")
+        if not revert_scene:
+            return
+        try:
+            await self.hass.services.async_call(
+                "scene",
+                "turn_on",
+                {},
+                blocking=True,
+                target={"entity_id": revert_scene},
+            )
+            _LOGGER.info(
+                "Reverted task %s to previous state via %s",
+                task.get("task_id"),
+                revert_scene,
+            )
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to apply revert for task %s (%s): %s",
+                task.get("task_id"),
+                revert_scene,
+                err,
+            )
+
+    def _capture_revert_actions(
+        self, start_actions: list[dict[str, Any]] | None
+    ) -> list[dict[str, Any]]:
+        """Build targeted revert actions from the current attribute values that
+        the start actions are about to overwrite.
+
+        For each start action like ``climate.set_fan_mode`` with
+        ``data={"fan_mode": "auto"}``, this reads the entity's current
+        ``fan_mode`` attribute (e.g. ``"high"``) and produces an inverse action
+        ``climate.set_fan_mode`` with ``data={"fan_mode": "high"}``. Returns an
+        empty list when nothing can be derived (e.g. services without data).
+        """
+        revert_actions: list[dict[str, Any]] = []
+        for action_def in start_actions or []:
+            service = action_def.get("service")
+            data = action_def.get("data") or {}
+            target = action_def.get("target") or {}
+            entity_id = target.get("entity_id")
+            if not service or not data or not entity_id:
+                continue
+            entity_ids = [entity_id] if isinstance(entity_id, str) else list(entity_id)
+            for eid in entity_ids:
+                state = self.hass.states.get(eid)
+                if not state:
+                    continue
+                revert_data = {
+                    key: state.attributes[key]
+                    for key in data
+                    if key in state.attributes
+                }
+                if revert_data:
+                    revert_actions.append(
+                        {
+                            "service": service,
+                            "target": {"entity_id": eid},
+                            "data": revert_data,
+                        }
+                    )
+        return revert_actions
+
+
 
 
     def _format_delay(self, delay: int, unit: str) -> str:
@@ -352,6 +585,8 @@ class QuickTimerCoordinator:
         self,
         task_id: str,
         finish_actions: list[dict[str, Any]],
+        revert: str = REVERT_OFF,
+        revert_scene: str | None = None,
         notify: bool = False,
         notify_ha: bool = False,
         notify_mobile: bool = False,
@@ -375,6 +610,15 @@ class QuickTimerCoordinator:
                 except Exception as err:
                     _LOGGER.error("Finish action %d failed for task %s: %s", idx, task_id, err)
                     error_count += 1
+
+            # Revert to previous state on finish (temporary mode)
+            if revert in (REVERT_ON_FINISH, REVERT_BOTH):
+                # Use the full stored task so targeted revert_actions are applied.
+                revert_task = self.store.get_task(task_id) or {
+                    "task_id": task_id,
+                    "revert_scene": revert_scene,
+                }
+                await self._apply_revert(revert_task)
 
             # Fire completion event
             self.hass.bus.async_fire(
@@ -467,6 +711,13 @@ class QuickTimerCoordinator:
 
         task = self.store.get_task(task_id)
 
+        # Revert before cleanup when requested (skip when silently replacing
+        # an existing task).
+        if task and not silent:
+            revert = task.get("revert", REVERT_OFF)
+            if revert in (REVERT_ON_CANCEL, REVERT_BOTH):
+                await self._apply_revert(task)
+
         # Clean up
         await self._cleanup_task(task_id)
 
@@ -490,6 +741,101 @@ class QuickTimerCoordinator:
             )
 
         _LOGGER.info("Cancelled scheduled task %s (reason: %s)", task_id, reason)
+        return True
+
+    async def async_pause_action(self, task_id: str) -> bool:
+        """Pause a running task, freezing its remaining time."""
+        task = self.store.get_task(task_id)
+        if not task:
+            _LOGGER.debug("No task found to pause for %s", task_id)
+            return False
+
+        if task.get("paused"):
+            _LOGGER.debug("Task %s is already paused", task_id)
+            return False
+
+        # Cancel the pending finish callback (but keep the task in storage)
+        if task_id in self._scheduled_tasks:
+            self._scheduled_tasks[task_id]()
+            del self._scheduled_tasks[task_id]
+
+        # Compute remaining time from the stored end_time
+        now = dt_util.now()
+        end_time_str = task.get("end_time")
+        end_time = dt_util.parse_datetime(end_time_str) if end_time_str else None
+        remaining_seconds = (
+            max(0, int((end_time - now).total_seconds())) if end_time else 0
+        )
+
+        await self.store.async_update_task(
+            task_id,
+            {"paused": True, "paused_remaining_seconds": remaining_seconds},
+        )
+
+        self.hass.bus.async_fire(
+            EVENT_TASK_PAUSED,
+            {"task_id": task_id, "remaining_seconds": remaining_seconds},
+        )
+        self._update_sensor()
+        _LOGGER.info("Paused task %s (%d seconds remaining)", task_id, remaining_seconds)
+        return True
+
+    async def async_resume_action(self, task_id: str) -> bool:
+        """Resume a paused task, rescheduling its finish callback."""
+        task = self.store.get_task(task_id)
+        if not task:
+            _LOGGER.debug("No task found to resume for %s", task_id)
+            return False
+
+        if not task.get("paused"):
+            _LOGGER.debug("Task %s is not paused", task_id)
+            return False
+
+        remaining_seconds = task.get("paused_remaining_seconds") or 0
+        now = dt_util.now()
+        new_end_time = now + timedelta(seconds=remaining_seconds)
+
+        # Preserve a virtual start so the progress bar stays continuous:
+        # virtual_start = new_end - total_duration
+        delay_seconds = task.get("delay_seconds") or remaining_seconds
+        virtual_start = new_end_time - timedelta(seconds=delay_seconds)
+
+        await self.store.async_update_task(
+            task_id,
+            {
+                "paused": False,
+                "paused_remaining_seconds": None,
+                "end_time": new_end_time.isoformat(),
+                "scheduled_time": virtual_start.isoformat(),
+            },
+        )
+
+        # Reschedule the finish callback
+        cancel_callback = async_track_point_in_time(
+            self.hass,
+            self._create_finish_actions_callback(
+                task_id=task_id,
+                finish_actions=task.get("finish_actions", []),
+                revert=task.get("revert", REVERT_OFF),
+                revert_scene=task.get("revert_scene"),
+                notify=task.get("notify", False),
+                notify_ha=task.get("notify_ha", False),
+                notify_mobile=task.get("notify_mobile", False),
+                notify_devices=task.get("notify_devices"),
+                task_label=task.get("task_label"),
+            ),
+            new_end_time,
+        )
+        self._scheduled_tasks[task_id] = cancel_callback
+
+        self.hass.bus.async_fire(
+            EVENT_TASK_RESUMED,
+            {"task_id": task_id, "remaining_seconds": remaining_seconds},
+        )
+        self._update_sensor()
+        _LOGGER.info(
+            "Resumed task %s (%d seconds remaining)", task_id, remaining_seconds
+        )
         return True
 
     async def _send_notification(
@@ -693,6 +1039,11 @@ class QuickTimerCoordinator:
                 await self.store.async_remove_task(task_id)
                 continue
 
+            # Leave paused tasks paused; they will be rescheduled on resume.
+            if task.get("paused"):
+                _LOGGER.info("Restoring paused task %s (frozen)", task_id)
+                continue
+
             if scheduled_time <= now:
                 # Task should have already executed, execute it now
                 _LOGGER.info(
@@ -703,6 +1054,8 @@ class QuickTimerCoordinator:
                 callback_fn = self._create_finish_actions_callback(
                     task_id=task_id,
                     finish_actions=finish_actions,
+                    revert=task.get("revert", REVERT_OFF),
+                    revert_scene=task.get("revert_scene"),
                     notify=task.get("notify", False),
                     notify_ha=task.get("notify_ha", False),
                     notify_mobile=task.get("notify_mobile", False),
@@ -722,6 +1075,8 @@ class QuickTimerCoordinator:
                     self._create_finish_actions_callback(
                         task_id=task_id,
                         finish_actions=finish_actions,
+                        revert=task.get("revert", REVERT_OFF),
+                        revert_scene=task.get("revert_scene"),
                         notify=task.get("notify", False),
                         notify_ha=task.get("notify_ha", False),
                         notify_mobile=task.get("notify_mobile", False),
@@ -770,6 +1125,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         unit = call.data.get(ATTR_UNIT, UNIT_MINUTES)
         start_actions = call.data.get(ATTR_START_ACTIONS)
         finish_actions = call.data.get(ATTR_FINISH_ACTIONS)
+        revert = call.data.get(ATTR_REVERT, REVERT_OFF)
+        revert_entities = call.data.get(ATTR_REVERT_ENTITIES)
         notify = call.data.get(ATTR_NOTIFY, False)
         notify_ha = call.data.get(ATTR_NOTIFY_HA, False)
         notify_mobile = call.data.get(ATTR_NOTIFY_MOBILE, False)
@@ -778,13 +1135,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         at_time = call.data.get(ATTR_AT_TIME)
         time_mode = call.data.get(ATTR_TIME_MODE, TIME_MODE_RELATIVE)
 
-        if not finish_actions:
-            _LOGGER.error("'finish_actions' is required for quick_timer.run_action")
+        if not finish_actions and not start_actions:
+            _LOGGER.error(
+                "'finish_actions' or 'start_actions' is required for quick_timer.run_action"
+            )
             return
 
         if not task_id:
             import hashlib
-            task_str = str(finish_actions)
+            task_str = str(finish_actions or start_actions)
             task_id = f"task_{hashlib.md5(task_str.encode()).hexdigest()[:8]}"
 
         await coord.async_schedule_action(
@@ -793,6 +1152,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             unit=unit,
             finish_actions=finish_actions,
             start_actions=start_actions,
+            revert=revert,
+            revert_entities=revert_entities,
             notify=notify,
             notify_ha=notify_ha,
             notify_mobile=notify_mobile,
@@ -816,6 +1177,34 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             return
 
         await coord.async_cancel_action(task_id)
+
+    async def handle_pause_action(call: ServiceCall) -> None:
+        """Handle the pause_action service call."""
+        coord = hass.data[DOMAIN].get("coordinator")
+        if coord is None:
+            _LOGGER.error("Quick Timer coordinator not initialized")
+            return
+
+        task_id = call.data.get(ATTR_TASK_ID)
+        if not task_id:
+            _LOGGER.error("'task_id' must be provided to pause_action")
+            return
+
+        await coord.async_pause_action(task_id)
+
+    async def handle_resume_action(call: ServiceCall) -> None:
+        """Handle the resume_action service call."""
+        coord = hass.data[DOMAIN].get("coordinator")
+        if coord is None:
+            _LOGGER.error("Quick Timer coordinator not initialized")
+            return
+
+        task_id = call.data.get(ATTR_TASK_ID)
+        if not task_id:
+            _LOGGER.error("'task_id' must be provided to resume_action")
+            return
+
+        await coord.async_resume_action(task_id)
 
     async def handle_get_preferences(call: ServiceCall) -> dict:
         """Handle the get_preferences service call."""
@@ -864,6 +1253,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             SERVICE_CANCEL_ACTION,
             handle_cancel_action,
             schema=CANCEL_ACTION_SCHEMA,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_PAUSE_ACTION):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_PAUSE_ACTION,
+            handle_pause_action,
+            schema=PAUSE_ACTION_SCHEMA,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_RESUME_ACTION):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_RESUME_ACTION,
+            handle_resume_action,
+            schema=RESUME_ACTION_SCHEMA,
         )
 
     if not hass.services.has_service(DOMAIN, SERVICE_GET_PREFERENCES):

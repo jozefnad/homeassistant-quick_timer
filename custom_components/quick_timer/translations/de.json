@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Quick Timer",
+        "description": "Mit dieser Integration können einmalige Aktionen für jede Entität mit einem Countdown geplant werden. Zum Installieren auf Senden klicken."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Es ist nur eine Quick-Timer-Instanz zulässig."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Quick-Timer-Einstellungen",
+        "description": "Konfiguriere die Zeitvorgaben, die in der Timerkarte angezeigt werden. Werte durch Kommas getrennt eingeben.",
+        "data": {
+          "preset_seconds": "Sekunden-Vorgaben",
+          "preset_minutes": "Minuten-Vorgaben",
+          "preset_hours": "Stunden-Vorgaben",
+          "enable_dialog_injection": "Quick-Timer-Panel in Entitätsdialogen aktivieren"
+        }
+      }
+    }
+  },
+  "services": {
+    "run_action": {
+      "name": "Aktion ausführen",
+      "description": "Eine einmalige Aktion mit einem Countdown planen.",
+      "fields": {
+        "task_id": { "name": "Aufgaben-ID", "description": "Eindeutige Kennung für diese Timeraufgabe." },
+        "task_label": { "name": "Aufgabenbezeichnung", "description": "Lesbare Bezeichnung für diese Timeraufgabe." },
+        "finish_actions": { "name": "Abschlussaktionen", "description": "Aktionen, die beim Ende des Timers ausgeführt werden." },
+        "start_actions": { "name": "Startaktionen", "description": "Aktionen, die sofort beim Start des Timers ausgeführt werden." },
+        "revert": { "name": "Wiederherstellungsmodus", "description": "Wann der vorherige Zustand wiederhergestellt wird: aus, Ende, Abbrechen oder beides." },
+        "revert_entities": { "name": "Wiederherzustellende Entitäten", "description": "Entitäten, deren Zustand gespeichert und wiederhergestellt wird. Standardmäßig die Aktionsziele." },
+        "delay": { "name": "Verzögerung", "description": "Verzögerung vor der Ausführung der Aktion." },
+        "unit": { "name": "Einheit", "description": "Zeiteinheit der Verzögerung (Sekunden, Minuten, Stunden)." },
+        "time_mode": { "name": "Zeitmodus", "description": "Relative Verzögerung oder absolute Zeit verwenden." },
+        "at_time": { "name": "Um diese Zeit", "description": "Absolute Zeit im Format HH:MM (im absoluten Zeitmodus)." },
+        "notify_ha": { "name": "HA-Benachrichtigung", "description": "Eine dauerhafte HA-Benachrichtigung senden." },
+        "notify_mobile": { "name": "Mobile Benachrichtigung", "description": "Eine mobile Push-Benachrichtigung an alle Geräte senden." },
+        "notify_devices": { "name": "Geräte benachrichtigen", "description": "Bestimmte mobile Geräte für Push-Benachrichtigungen." }
+      }
+    },
+    "cancel_action": {
+      "name": "Aktion abbrechen",
+      "description": "Eine geplante Timeraufgabe abbrechen.",
+      "fields": { "task_id": { "name": "Aufgaben-ID", "description": "Die abzubrechende Aufgaben-ID." } }
+    },
+    "pause_action": {
+      "name": "Aktion pausieren",
+      "description": "Eine laufende Timeraufgabe pausieren und die verbleibende Zeit einfrieren.",
+      "fields": { "task_id": { "name": "Aufgaben-ID", "description": "Die zu pausierende Aufgaben-ID." } }
+    },
+    "resume_action": {
+      "name": "Aktion fortsetzen",
+      "description": "Eine pausierte Timeraufgabe fortsetzen.",
+      "fields": { "task_id": { "name": "Aufgaben-ID", "description": "Die fortzusetzende Aufgaben-ID." } }
+    },
+    "get_preferences": {
+      "name": "Einstellungen abrufen",
+      "description": "Gespeicherte Einstellungen für eine Entität abrufen.",
+      "fields": { "entity_id": { "name": "Entität", "description": "Die Entität, deren Einstellungen abgerufen werden." } }
+    },
+    "set_preferences": {
+      "name": "Einstellungen festlegen",
+      "description": "Einstellungen für eine Entität speichern.",
+      "fields": {
+        "entity_id": { "name": "Entität", "description": "Die Entität, für die Einstellungen gespeichert werden." },
+        "preferences": { "name": "Einstellungen", "description": "Zu speichernde Einstellungsdaten." }
+      }
+    }
+  }
+}

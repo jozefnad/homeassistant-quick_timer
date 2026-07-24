@@ -62,7 +62,17 @@ class QuickTimerSensor(SensorEntity):
         for task_id, task in self._active_tasks.items():
             end_time_str = task.get("end_time") or task.get("scheduled_time")
             start_time_str = task.get("scheduled_time")  # Toto je reálny čas štartu
-            
+
+            # Paused tasks: freeze the remaining time and don't run a live countdown.
+            if task.get("paused"):
+                tasks_with_remaining[task_id] = {
+                    **task,
+                    "remaining_seconds": task.get("paused_remaining_seconds") or 0,
+                    "end_timestamp": None,
+                    "start_timestamp": None,
+                }
+                continue
+
             if end_time_str:
                 try:
                     end_time = dt_util.parse_datetime(end_time_str)

@@ -45,6 +45,14 @@
           "name": "Start Actions",
           "description": "List of actions to execute immediately when the timer starts."
         },
+        "revert": {
+          "name": "Revert Mode",
+          "description": "When to restore the prior state: off, finish, cancel, or both."
+        },
+        "revert_entities": {
+          "name": "Revert Entities",
+          "description": "Entities whose state is snapshotted and restored. Defaults to the action targets."
+        },
         "delay": {
           "name": "Delay",
           "description": "The delay before the action is executed."
@@ -82,6 +90,26 @@
         "task_id": {
           "name": "Task ID",
           "description": "The task ID to cancel."
+        }
+      }
+    },
+    "pause_action": {
+      "name": "Pause Action",
+      "description": "Pause a running timer task, freezing its remaining time.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": "The task ID to pause."
+        }
+      }
+    },
+    "resume_action": {
+      "name": "Resume Action",
+      "description": "Resume a paused timer task.",
+      "fields": {
+        "task_id": {
+          "name": "Task ID",
+          "description": "The task ID to resume."
         }
       }
     },

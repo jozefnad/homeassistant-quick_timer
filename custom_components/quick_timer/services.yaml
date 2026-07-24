@@ -76,6 +76,31 @@ run_action:
       example: '[{"service": "light.turn_off", "target": {"entity_id": "light.bedroom"}}]'
       selector:
         object:
+    revert:
+      name: Revert Mode
+      description: Temporary mode. Snapshots the previous state of the target entities on start and restores it when the timer finishes and/or is cancelled.
+      required: false
+      example: "finish"
+      default: "off"
+      selector:
+        select:
+          options:
+            - label: "Off"
+              value: "off"
+            - label: "Revert on finish"
+              value: "finish"
+            - label: "Revert on cancel"
+              value: "cancel"
+            - label: "Revert on finish and cancel"
+              value: "both"
+    revert_entities:
+      name: Revert Entities (Optional)
+      description: Entities to snapshot and restore in revert mode. If omitted, the targets of the start (or finish) actions are used.
+      required: false
+      example: '["climate.living_room"]'
+      selector:
+        entity:
+          multiple: true
     notify_ha:
       name: HA Notification
       description: Whether to send a persistent notification in Home Assistant when the timer completes.
@@ -110,6 +135,30 @@ cancel_action:
     task_id:
       name: Task ID
       description: The unique task ID to cancel.
+      required: true
+      example: "card_abc123"
+      selector:
+        text:
+
+pause_action:
+  name: Pause Action
+  description: Pause a running timer task, freezing its remaining time until resumed.
+  fields:
+    task_id:
+      name: Task ID
+      description: The unique task ID to pause.
+      required: true
+      example: "card_abc123"
+      selector:
+        text:
+
+resume_action:
+  name: Resume Action
+  description: Resume a previously paused timer task.
+  fields:
+    task_id:
+      name: Task ID
+      description: The unique task ID to resume.
       required: true
       example: "card_abc123"
       selector:

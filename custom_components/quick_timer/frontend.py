@@ -11,12 +11,14 @@ _LOGGER = logging.getLogger(__name__)
 
 URL_BASE = "/quick_timer_static"
 FILENAME = "quick-timer-card.js"
+TRANSLATION_PATTERN = re.compile(r"^[a-z0-9-]+$")
 
 async def async_register_frontend(hass: HomeAssistant):
     """Register View and Lovelace resource."""
     
     # Register View
     hass.http.register_view(QuickTimerCardView())
+    hass.http.register_view(QuickTimerTranslationView())
 
     # Prepare URL with cache buster
     try:
@@ -116,3 +118,39 @@ class QuickTimerCardView(HomeAssistantView):
         """Helper to read file safely in executor."""
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
+
+
+class QuickTimerTranslationView(HomeAssistantView):
+    """Serve frontend translations without a hardcoded language registry."""
+
+    url = f"{URL_BASE}/translations/{{language}}.json"
+    name = "quick_timer:translation"
+    requires_auth = False
+
+    async def get(self, request, language):
+        """Return a frontend translation JSON file."""
+        language = language.lower()
+        if not TRANSLATION_PATTERN.fullmatch(language):
+            return web.Response(status=404, text="Translation not found")
+
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(current_dir, "www", "translations", f"{language}.json")
+        hass = request.app["hass"]
+        if not await hass.async_add_executor_job(os.path.isfile, file_path):
+            return web.Response(status=404, text="Translation not found")
+
+        try:
+            content = await hass.async_add_executor_job(self._read_file, file_path)
+            return web.Response(
+                text=content,
+                content_type="application/json",
+                headers={"Cache-Control": "no-cache"},
+            )
+        except Exception as err:
+            _LOGGER.error("Error reading frontend translation %s: %s", language, err)
+            return web.Response(status=500, text="Failed to load translation")
+
+    @staticmethod
+    def _read_file(file_path):
+        with open(file_path, "r", encoding="utf-8") as translation_file:
+            return translation_file.read()

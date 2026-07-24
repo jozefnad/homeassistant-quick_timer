@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Quick Timer",
+        "description": "Cette intégration permet de planifier des actions ponctuelles pour toute entité avec un compte à rebours. Cliquez sur envoyer pour l’installer."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Une seule instance de Quick Timer est autorisée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paramètres de Quick Timer",
+        "description": "Configurez les préréglages de durée affichés dans la carte du minuteur. Saisissez des valeurs séparées par des virgules.",
+        "data": {
+          "preset_seconds": "Préréglages en secondes",
+          "preset_minutes": "Préréglages en minutes",
+          "preset_hours": "Préréglages en heures",
+          "enable_dialog_injection": "Activer le panneau Quick Timer dans les boîtes de dialogue d’entité"
+        }
+      }
+    }
+  },
+  "services": {
+    "run_action": {
+      "name": "Exécuter une action",
+      "description": "Planifier une action ponctuelle avec un compte à rebours.",
+      "fields": {
+        "task_id": { "name": "ID de tâche", "description": "Identifiant unique de cette tâche de minuteur." },
+        "task_label": { "name": "Libellé de tâche", "description": "Libellé lisible pour cette tâche de minuteur." },
+        "finish_actions": { "name": "Actions de fin", "description": "Actions à exécuter lorsque le minuteur se termine." },
+        "start_actions": { "name": "Actions de démarrage", "description": "Actions à exécuter immédiatement au démarrage du minuteur." },
+        "revert": { "name": "Mode de restauration", "description": "Quand restaurer l’état précédent : désactivé, fin, annulation ou les deux." },
+        "revert_entities": { "name": "Entités à restaurer", "description": "Entités dont l’état est enregistré puis restauré. Par défaut, les cibles des actions." },
+        "delay": { "name": "Délai", "description": "Délai avant l’exécution de l’action." },
+        "unit": { "name": "Unité", "description": "Unité du délai (secondes, minutes, heures)." },
+        "time_mode": { "name": "Mode horaire", "description": "Utiliser un délai relatif ou une heure absolue." },
+        "at_time": { "name": "À l’heure", "description": "Heure absolue au format HH:MM (en mode horaire absolu)." },
+        "notify_ha": { "name": "Notification HA", "description": "Envoyer une notification HA persistante." },
+        "notify_mobile": { "name": "Notification mobile", "description": "Envoyer une notification push mobile à tous les appareils." },
+        "notify_devices": { "name": "Appareils à notifier", "description": "Appareils mobiles spécifiques pour les notifications push." }
+      }
+    },
+    "cancel_action": {
+      "name": "Annuler l’action",
+      "description": "Annuler une tâche de minuteur planifiée.",
+      "fields": { "task_id": { "name": "ID de tâche", "description": "ID de la tâche à annuler." } }
+    },
+    "pause_action": {
+      "name": "Mettre l’action en pause",
+      "description": "Mettre en pause une tâche en cours et figer le temps restant.",
+      "fields": { "task_id": { "name": "ID de tâche", "description": "ID de la tâche à mettre en pause." } }
+    },
+    "resume_action": {
+      "name": "Reprendre l’action",
+      "description": "Reprendre une tâche de minuteur en pause.",
+      "fields": { "task_id": { "name": "ID de tâche", "description": "ID de la tâche à reprendre." } }
+    },
+    "get_preferences": {
+      "name": "Obtenir les préférences",
+      "description": "Obtenir les préférences enregistrées pour une entité.",
+      "fields": { "entity_id": { "name": "Entité", "description": "Entité dont obtenir les préférences." } }
+    },
+    "set_preferences": {
+      "name": "Définir les préférences",
+      "description": "Enregistrer les préférences d’une entité.",
+      "fields": {
+        "entity_id": { "name": "Entité", "description": "Entité dont définir les préférences." },
+        "preferences": { "name": "Préférences", "description": "Données de préférences à enregistrer." }
+      }
+    }
+  }
+}

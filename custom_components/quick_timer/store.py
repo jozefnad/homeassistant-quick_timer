@@ -83,6 +83,10 @@ class QuickTimerStore:
         delay_seconds: int,
         start_actions: list[dict[str, Any]] | None = None,
         finish_actions: list[dict[str, Any]] | None = None,
+        revert: str = "off",
+        revert_entities: list[str] | None = None,
+        revert_scene: str | None = None,
+        revert_actions: list[dict[str, Any]] | None = None,
         notify: bool = False,
         notify_ha: bool = False,
         notify_mobile: bool = False,
@@ -100,6 +104,12 @@ class QuickTimerStore:
             "delay_seconds": delay_seconds,
             "start_actions": start_actions or [],
             "finish_actions": finish_actions or [],
+            "revert": revert,
+            "revert_entities": revert_entities or [],
+            "revert_scene": revert_scene,
+            "revert_actions": revert_actions or [],
+            "paused": False,
+            "paused_remaining_seconds": None,
             "notify": notify,
             "notify_ha": notify_ha,
             "notify_mobile": notify_mobile,
@@ -109,6 +119,16 @@ class QuickTimerStore:
         }
         await self.async_save()
         _LOGGER.info("Added scheduled task %s at %s (mode: %s)", task_id, scheduled_time, time_mode)
+
+    async def async_update_task(self, task_id: str, updates: dict[str, Any]) -> bool:
+        """Update fields of an existing task (e.g. for pause/resume)."""
+        if task_id not in self._data:
+            _LOGGER.debug("No task found for %s to update", task_id)
+            return False
+        self._data[task_id].update(updates)
+        await self.async_save()
+        _LOGGER.debug("Updated task %s with %s", task_id, list(updates.keys()))
+        return True
 
     async def async_remove_task(self, task_id: str) -> bool:
         """Remove a scheduled task."""

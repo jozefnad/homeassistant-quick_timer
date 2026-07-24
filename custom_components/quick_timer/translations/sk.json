@@ -45,6 +45,14 @@
           "name": "Štartovacie akcie",
           "description": "Zoznam akcií na okamžité vykonanie pri spustení timera."
         },
+        "revert": {
+          "name": "Režim návratu",
+          "description": "Kedy obnoviť predchádzajúci stav: off, finish, cancel alebo both."
+        },
+        "revert_entities": {
+          "name": "Entity návratu",
+          "description": "Entity, ktorých stav sa uloží a obnoví. Predvolene ciele akcií."
+        },
         "delay": {
           "name": "Oneskorenie",
           "description": "Oneskorenie pred vykonaním akcie."
@@ -82,6 +90,26 @@
         "task_id": {
           "name": "ID úlohy",
           "description": "ID úlohy na zrušenie."
+        }
+      }
+    },
+    "pause_action": {
+      "name": "Pozastaviť akciu",
+      "description": "Pozastavte bežiacu úlohu timera a zmrazte zostávajúci čas.",
+      "fields": {
+        "task_id": {
+          "name": "ID úlohy",
+          "description": "ID úlohy na pozastavenie."
+        }
+      }
+    },
+    "resume_action": {
+      "name": "Pokračovať v akcii",
+      "description": "Obnovte pozastavenú úlohu timera.",
+      "fields": {
+        "task_id": {
+          "name": "ID úlohy",
+          "description": "ID úlohy na obnovenie."
         }
       }
     },
