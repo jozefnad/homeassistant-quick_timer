@@ -46,10 +46,10 @@
 
 Card and more-info panel translations are loaded from
 `custom_components/quick_timer/www/translations/`. The built-in frontend
-languages are English (`en`), Slovak (`sk`), Dutch (`nl`), French (`fr`), and
-German (`de`). To add another language, copy `en.json`, translate its values,
-and save it under the lowercase Home Assistant language code. No JavaScript or
-Python registration is required.
+languages are English (`en`), Slovak (`sk`), Dutch (`nl`), French (`fr`),
+German (`de`), Polish (`pl`), and Spanish (`es`). To add another language, copy
+`en.json`, translate its values, and save it under the lowercase Home Assistant
+language code. No JavaScript or Python registration is required.
 
 Regional files such as `pt-br.json` are supported. If a regional file is not
 present, Quick Timer tries the base language (`pt.json`) and then English.
