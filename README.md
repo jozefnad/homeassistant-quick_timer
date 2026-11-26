@@ -35,7 +35,8 @@
 | 💾 **Persistent timers** | Tasks survive HA restarts; missed tasks execute on startup |
 | 🔔 **Notifications** | HA persistent + targeted mobile push on completion |
 | 🎨 **Built-in Lovelace card** | Compact & full modes, 24 colors, badge countdown, configurable interactions |
-| 💉 **Dialog injection** | Quick Timer panel inside entity more-info dialogs |
+| 💉 **Dialog injection** | Quick Timer panel inside entity more-info dialogs — lists every timer of the entity (also those started from cards); add more with **+ Add timer** |
+| 🏷️ **Timers on dashboard cards** | A countdown pill appears on every card / entities row of an entity with a running timer; tap it to open the timer list |
 | 📋 **Overview card** | Dashboard card listing all active timers |
 | 🧠 **History presets** | Remembers last 3 configs per entity |
 | 🆔 **Task isolation** | Multiple independent timers per entity via unique `task_id` |
@@ -103,6 +104,11 @@ mode: compact
 ### Time Presets
 
 Customize time presets in **Settings** → **Devices & Services** → **Quick Timer** → **Configure** (comma-separated values for seconds, minutes, hours).
+
+The same dialog has two display switches:
+
+- **Enable Quick Timer panel in entity dialogs** — the panel in more-info dialogs.
+- **Show running timers on dashboard cards** — the countdown pill on cards (tile, button, mushroom, …) and entities-card rows. It is added by the Quick Timer frontend, so it works on any dashboard without changing card configs.
 
 ---
 
@@ -391,6 +397,8 @@ No. The card is bundled and registers automatically. When you remove the integra
 <summary><strong>Can I run multiple timers for the same entity?</strong></summary>
 
 Yes. Each card generates a unique `card_id`. By default (`sync_with_more_info: true`) a card with a single entity uses that `entity_id` as its `task_id`, so it shares one timer with the more-info dialog — and with any other synced card for the same entity. To give several cards on the same entity independent timers, set `sync_with_more_info: false` on them; they will then use their own `card_id`.
+
+In the more-info dialog, **+ Add timer** schedules another independent timer for the same entity (e.g. *turn on at 18:00* and *turn off at 23:00*). The first one keeps the `entity_id` as `task_id` (shared with synced cards); additional ones get `<entity_id>__qt_<id>`.
 </details>
 
 <details>

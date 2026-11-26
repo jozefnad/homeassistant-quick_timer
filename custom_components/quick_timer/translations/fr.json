@@ -19,7 +19,8 @@
           "preset_seconds": "Préréglages en secondes",
           "preset_minutes": "Préréglages en minutes",
           "preset_hours": "Préréglages en heures",
-          "enable_dialog_injection": "Activer le panneau Quick Timer dans les boîtes de dialogue d’entité"
+          "enable_dialog_injection": "Activer le panneau Quick Timer dans les boîtes de dialogue d’entité",
+          "show_card_badges": "Afficher les minuteurs actifs sur les cartes du tableau de bord"
         }
       }
     }

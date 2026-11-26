@@ -97,5 +97,10 @@
   "start": "inicio",
   "finish": "fin",
   "color_auto": "Color automático (según el estado del temporizador)",
-  "card_title": "Título de la tarjeta"
+  "card_title": "Título de la tarjeta",
+  "add_timer": "Añadir temporizador",
+  "close": "Cerrar",
+  "from_card": "Iniciado desde una tarjeta del panel",
+  "revert_active": "Temporal – se revertirá después",
+  "timers": "Temporizadores"
 }

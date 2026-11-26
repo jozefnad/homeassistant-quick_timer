@@ -19,7 +19,8 @@
           "preset_seconds": "Secondepresets",
           "preset_minutes": "Minuutpresets",
           "preset_hours": "Uurpresets",
-          "enable_dialog_injection": "Quick Timer-paneel in entiteitsdialogen inschakelen"
+          "enable_dialog_injection": "Quick Timer-paneel in entiteitsdialogen inschakelen",
+          "show_card_badges": "Actieve timers op dashboardkaarten tonen"
         }
       }
     }

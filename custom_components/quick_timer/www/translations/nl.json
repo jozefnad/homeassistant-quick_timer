@@ -97,5 +97,10 @@
   "start": "start",
   "finish": "einde",
   "color_auto": "Automatische kleur (op basis van timerstatus)",
-  "card_title": "Kaarttitel"
+  "card_title": "Kaarttitel",
+  "add_timer": "Timer toevoegen",
+  "close": "Sluiten",
+  "from_card": "Gestart vanaf een dashboardkaart",
+  "revert_active": "Tijdelijk – wordt daarna teruggezet",
+  "timers": "Timers"
 }

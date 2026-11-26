@@ -97,5 +97,10 @@
   "start": "Start",
   "finish": "Ende",
   "color_auto": "Automatische Farbe (nach Timerstatus)",
-  "card_title": "Kartentitel"
+  "card_title": "Kartentitel",
+  "add_timer": "Timer hinzufügen",
+  "close": "Schließen",
+  "from_card": "Von einer Dashboard-Karte gestartet",
+  "revert_active": "Temporär – wird danach zurückgesetzt",
+  "timers": "Timer"
 }

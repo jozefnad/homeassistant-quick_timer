@@ -19,7 +19,8 @@
           "preset_seconds": "Second presets",
           "preset_minutes": "Minute presets",
           "preset_hours": "Hour presets",
-          "enable_dialog_injection": "Enable Quick Timer panel in entity dialogs"
+          "enable_dialog_injection": "Enable Quick Timer panel in entity dialogs",
+          "show_card_badges": "Show running timers on dashboard cards"
         }
       }
     }

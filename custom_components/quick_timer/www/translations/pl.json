@@ -97,5 +97,10 @@
   "start": "początek",
   "finish": "koniec",
   "color_auto": "Kolor automatyczny (według stanu minutnika)",
-  "card_title": "Tytuł karty"
+  "card_title": "Tytuł karty",
+  "add_timer": "Dodaj minutnik",
+  "close": "Zamknij",
+  "from_card": "Uruchomiony z karty panelu",
+  "revert_active": "Tymczasowe – potem zostanie przywrócone",
+  "timers": "Minutniki"
 }

@@ -19,7 +19,8 @@
           "preset_seconds": "Presety sekúnd",
           "preset_minutes": "Presety minút",
           "preset_hours": "Presety hodín",
-          "enable_dialog_injection": "Povoliť panel Quick Timer v dialógoch entít"
+          "enable_dialog_injection": "Povoliť panel Quick Timer v dialógoch entít",
+          "show_card_badges": "Zobrazovať bežiace časovače na kartách dashboardu"
         }
       }
     }

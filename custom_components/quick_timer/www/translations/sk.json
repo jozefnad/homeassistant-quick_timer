@@ -97,5 +97,10 @@
   "start": "štart",
   "finish": "koniec",
   "color_auto": "Automatická farba (podľa stavu)",
-  "card_title": "Názov karty"
+  "card_title": "Názov karty",
+  "add_timer": "Pridať časovač",
+  "close": "Zavrieť",
+  "from_card": "Spustené z karty na dashboarde",
+  "revert_active": "Dočasné – potom sa vráti späť",
+  "timers": "Časovače"
 }

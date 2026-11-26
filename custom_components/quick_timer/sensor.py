@@ -34,7 +34,13 @@ class QuickTimerSensor(SensorEntity):
     # These attributes can grow large (all tasks + per-entity preferences and
     # history) and change on every timer event; keep them out of the recorder.
     _unrecorded_attributes = frozenset(
-        {"active_tasks", "preferences", "presets", "enable_dialog_injection"}
+        {
+            "active_tasks",
+            "preferences",
+            "presets",
+            "enable_dialog_injection",
+            "show_card_badges",
+        }
     )
 
     def __init__(self, coordinator, config_entry) -> None:
@@ -107,6 +113,7 @@ class QuickTimerSensor(SensorEntity):
         preset_minutes = self._parse_presets(options.get("preset_minutes", "1,2,3,5,10,15,20,30,45"))
         preset_hours = self._parse_presets(options.get("preset_hours", "1,2,3,4,6,8,12"))
         enable_dialog_injection = options.get("enable_dialog_injection", True)
+        show_card_badges = options.get("show_card_badges", True)
         
         return {
             "active_tasks": tasks_with_remaining,
@@ -118,6 +125,7 @@ class QuickTimerSensor(SensorEntity):
                 "hours": preset_hours,
             },
             "enable_dialog_injection": enable_dialog_injection,
+            "show_card_badges": show_card_badges,
         }
 
     @callback

@@ -97,5 +97,10 @@
   "start": "start",
   "finish": "finish",
   "color_auto": "Auto color (by timer state)",
-  "card_title": "Card Title"
+  "card_title": "Card Title",
+  "add_timer": "Add timer",
+  "close": "Close",
+  "from_card": "Started from a dashboard card",
+  "revert_active": "Temporary – reverts afterwards",
+  "timers": "Timers"
 }

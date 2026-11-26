@@ -97,5 +97,10 @@
   "start": "début",
   "finish": "fin",
   "color_auto": "Couleur automatique (selon l’état du minuteur)",
-  "card_title": "Titre de la carte"
+  "card_title": "Titre de la carte",
+  "add_timer": "Ajouter un minuteur",
+  "close": "Fermer",
+  "from_card": "Démarré depuis une carte du tableau de bord",
+  "revert_active": "Temporaire – sera rétabli ensuite",
+  "timers": "Minuteurs"
 }

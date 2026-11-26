@@ -19,7 +19,8 @@
           "preset_seconds": "Tiempos predefinidos en segundos",
           "preset_minutes": "Tiempos predefinidos en minutos",
           "preset_hours": "Tiempos predefinidos en horas",
-          "enable_dialog_injection": "Activar el panel de Quick Timer en los diálogos de entidad"
+          "enable_dialog_injection": "Activar el panel de Quick Timer en los diálogos de entidad",
+          "show_card_badges": "Mostrar temporizadores activos en las tarjetas del panel"
         }
       }
     }

@@ -19,7 +19,8 @@
           "preset_seconds": "Sekunden-Vorgaben",
           "preset_minutes": "Minuten-Vorgaben",
           "preset_hours": "Stunden-Vorgaben",
-          "enable_dialog_injection": "Quick-Timer-Panel in Entitätsdialogen aktivieren"
+          "enable_dialog_injection": "Quick-Timer-Panel in Entitätsdialogen aktivieren",
+          "show_card_badges": "Laufende Timer auf Dashboard-Karten anzeigen"
         }
       }
     }

@@ -75,6 +75,12 @@ class QuickTimerOptionsFlow(config_entries.OptionsFlow):
                             "enable_dialog_injection", True
                         ),
                     ): cv.boolean,
+                    vol.Optional(
+                        "show_card_badges",
+                        default=self.config_entry.options.get(
+                            "show_card_badges", True
+                        ),
+                    ): cv.boolean,
                 }
             ),
         )
