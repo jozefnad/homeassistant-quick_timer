@@ -1,0 +1,141 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Quick Timer",
+        "description": "Esta integración te permite programar acciones puntuales para cualquier entidad con un temporizador de cuenta atrás. Haz clic en enviar para instalarla."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Solo se permite una instancia de Quick Timer."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ajustes de Quick Timer",
+        "description": "Configura los tiempos predefinidos que se muestran en la tarjeta del temporizador. Introduce los valores separados por comas.",
+        "data": {
+          "preset_seconds": "Tiempos predefinidos en segundos",
+          "preset_minutes": "Tiempos predefinidos en minutos",
+          "preset_hours": "Tiempos predefinidos en horas",
+          "enable_dialog_injection": "Activar el panel de Quick Timer en los diálogos de entidad"
+        }
+      }
+    }
+  },
+  "services": {
+    "run_action": {
+      "name": "Ejecutar acción",
+      "description": "Programa una acción puntual con un temporizador de cuenta atrás.",
+      "fields": {
+        "task_id": {
+          "name": "ID de tarea",
+          "description": "Identificador único de esta tarea de temporizador."
+        },
+        "task_label": {
+          "name": "Etiqueta de tarea",
+          "description": "Etiqueta legible para esta tarea de temporizador."
+        },
+        "finish_actions": {
+          "name": "Acciones al terminar",
+          "description": "Lista de acciones que se ejecutan cuando termina el temporizador."
+        },
+        "start_actions": {
+          "name": "Acciones al iniciar",
+          "description": "Lista de acciones que se ejecutan inmediatamente al iniciar el temporizador."
+        },
+        "revert": {
+          "name": "Modo de restauración",
+          "description": "Cuándo restaurar el estado anterior: desactivado, al terminar, al cancelar o en ambos casos."
+        },
+        "revert_entities": {
+          "name": "Entidades a restaurar",
+          "description": "Entidades cuyo estado se guarda y se restaura. De forma predeterminada, los objetivos de las acciones."
+        },
+        "delay": {
+          "name": "Retardo",
+          "description": "Tiempo de espera antes de ejecutar la acción."
+        },
+        "unit": {
+          "name": "Unidad",
+          "description": "Unidad de tiempo del retardo (segundos, minutos, horas)."
+        },
+        "time_mode": {
+          "name": "Modo de tiempo",
+          "description": "Si se usa un retardo relativo o una hora absoluta."
+        },
+        "at_time": {
+          "name": "A la hora",
+          "description": "Hora absoluta en formato HH:MM (cuando el modo de tiempo es absoluto)."
+        },
+        "notify_ha": {
+          "name": "Notificación de HA",
+          "description": "Envía una notificación persistente de HA."
+        },
+        "notify_mobile": {
+          "name": "Notificación móvil",
+          "description": "Envía una notificación push a todos los dispositivos móviles."
+        },
+        "notify_devices": {
+          "name": "Dispositivos a notificar",
+          "description": "Dispositivos móviles concretos a los que enviar notificaciones push."
+        }
+      }
+    },
+    "cancel_action": {
+      "name": "Cancelar acción",
+      "description": "Cancela una tarea de temporizador programada.",
+      "fields": {
+        "task_id": {
+          "name": "ID de tarea",
+          "description": "ID de la tarea que se va a cancelar."
+        }
+      }
+    },
+    "pause_action": {
+      "name": "Pausar acción",
+      "description": "Pausa una tarea de temporizador en curso y congela el tiempo restante.",
+      "fields": {
+        "task_id": {
+          "name": "ID de tarea",
+          "description": "ID de la tarea que se va a pausar."
+        }
+      }
+    },
+    "resume_action": {
+      "name": "Reanudar acción",
+      "description": "Reanuda una tarea de temporizador en pausa.",
+      "fields": {
+        "task_id": {
+          "name": "ID de tarea",
+          "description": "ID de la tarea que se va a reanudar."
+        }
+      }
+    },
+    "get_preferences": {
+      "name": "Obtener preferencias",
+      "description": "Obtiene las preferencias guardadas de una entidad.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Entidad de la que se quieren obtener las preferencias."
+        }
+      }
+    },
+    "set_preferences": {
+      "name": "Establecer preferencias",
+      "description": "Guarda las preferencias de una entidad.",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "Entidad para la que se establecen las preferencias."
+        },
+        "preferences": {
+          "name": "Preferencias",
+          "description": "Datos de preferencias que se van a guardar."
+        }
+      }
+    }
+  }
+}
