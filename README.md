@@ -1,6 +1,6 @@
 # Quick Timer
 
-[![Add to Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=quick_timer)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jozefnad&repository=homeassistant-quick_timer&category=Dashboard)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/jozefnad/homeassistant-quick_timer.svg)](https://github.com/jozefnad/homeassistant-quick_timer/releases)
 [![License](https://img.shields.io/github/license/jozefnad/homeassistant-quick_timer.svg)](LICENSE)
