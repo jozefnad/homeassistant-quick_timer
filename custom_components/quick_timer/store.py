@@ -94,6 +94,8 @@ class QuickTimerStore:
         at_time: str | None = None,
         time_mode: str = "relative",
         task_label: str | None = None,
+        user_id: str | None = None,
+        context_id: str | None = None,
     ) -> None:
         """Add a scheduled task with new architecture (task_id-based, action arrays)."""
         self._data[task_id] = {
@@ -116,6 +118,10 @@ class QuickTimerStore:
             "notify_devices": notify_devices or [],
             "at_time": at_time,
             "time_mode": time_mode,
+            # Identity of the caller, used to run finish/revert actions with
+            # the same permissions as the user who scheduled the task.
+            "user_id": user_id,
+            "context_id": context_id,
         }
         await self.async_save()
         _LOGGER.info("Added scheduled task %s at %s (mode: %s)", task_id, scheduled_time, time_mode)

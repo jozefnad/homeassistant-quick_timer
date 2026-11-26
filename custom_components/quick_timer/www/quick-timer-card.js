@@ -823,7 +823,7 @@ class QuickTimerCardEditor extends LitElement {
   }
 }
 
-customElements.define('quick-timer-card-editor', QuickTimerCardEditor);
+if (!customElements.get('quick-timer-card-editor')) customElements.define('quick-timer-card-editor', QuickTimerCardEditor);
 
 // ============================================
 // Quick Timer Card
@@ -1076,6 +1076,12 @@ class QuickTimerCard extends LitElement {
     return this.config.entity || '';
   }
 
+  // Task the card currently shows (may be an entity-keyed task found via sync),
+  // falling back to the card's own id.
+  _getActiveTaskId() {
+    return this._currentTaskId || this._getCardId();
+  }
+
   _getCardId() {
     // When syncing with the more-info dialog (which keys tasks by entity_id),
     // a single-entity card uses that entity_id as its task_id so both views
@@ -1103,7 +1109,9 @@ class QuickTimerCard extends LitElement {
     if (tasks[cardId]) {
       activeTask = tasks[cardId];
       activeTaskId = cardId;
-    } else {
+    } else if (this.config.sync_with_more_info !== false) {
+      // Only pick up entity-keyed tasks (more-info dialog / other synced cards)
+      // when syncing is enabled; otherwise each card only sees its own card_id.
       const targets = this.config.targets || [];
       if (targets.length > 0) {
         const foundTarget = targets.find(t => tasks[t.entity]);
@@ -1192,8 +1200,8 @@ class QuickTimerCard extends LitElement {
         }
       }
 
-      if (finish_actions.length === 0) {
-        console.error('[Quick Timer] No finish actions configured');
+      if (finish_actions.length === 0 && start_actions.length === 0) {
+        console.error('[Quick Timer] No actions configured');
         this._loading = false; this.requestUpdate();
         return;
       }
@@ -1238,7 +1246,7 @@ class QuickTimerCard extends LitElement {
     this.requestUpdate();
 
     try {
-      await this.hass.callService('quick_timer', 'cancel_action', { task_id: this._getCardId() });
+      await this.hass.callService('quick_timer', 'cancel_action', { task_id: this._getActiveTaskId() });
       this._isScheduled = false;
       this._remainingSeconds = 0;
       if (navigator.vibrate) navigator.vibrate([30, 30, 30]);
@@ -1251,7 +1259,7 @@ class QuickTimerCard extends LitElement {
     this._loading = true;
     this.requestUpdate();
     try {
-      await this.hass.callService('quick_timer', 'pause_action', { task_id: this._getCardId() });
+      await this.hass.callService('quick_timer', 'pause_action', { task_id: this._getActiveTaskId() });
       this._isPaused = true;
       if (navigator.vibrate) navigator.vibrate(30);
     } catch (e) { console.error('[Quick Timer] Pause failed:', e); }
@@ -1263,7 +1271,7 @@ class QuickTimerCard extends LitElement {
     this._loading = true;
     this.requestUpdate();
     try {
-      await this.hass.callService('quick_timer', 'resume_action', { task_id: this._getCardId() });
+      await this.hass.callService('quick_timer', 'resume_action', { task_id: this._getActiveTaskId() });
       this._isPaused = false;
       if (navigator.vibrate) navigator.vibrate(30);
     } catch (e) { console.error('[Quick Timer] Resume failed:', e); }
@@ -1695,7 +1703,7 @@ class QuickTimerCard extends LitElement {
   }
 }
 
-customElements.define('quick-timer-card', QuickTimerCard);
+if (!customElements.get('quick-timer-card')) customElements.define('quick-timer-card', QuickTimerCard);
 
 // ============================================
 // Quick Timer Overview Card Editor
@@ -1751,7 +1759,7 @@ class QuickTimerOverviewCardEditor extends LitElement {
   }
 }
 
-customElements.define('quick-timer-overview-card-editor', QuickTimerOverviewCardEditor);
+if (!customElements.get('quick-timer-overview-card-editor')) customElements.define('quick-timer-overview-card-editor', QuickTimerOverviewCardEditor);
 
 // ============================================
 // Quick Timer Overview Card
@@ -1812,9 +1820,11 @@ class QuickTimerOverviewCard extends LitElement {
   _getTaskLabel(taskId, task) {
     // Prefer task_label (sent by card)
     if (task.task_label) return task.task_label;
-    // Try to get friendly name from finish_actions
-    if (task.finish_actions?.length > 0) {
-      const firstTarget = task.finish_actions[0]?.target?.entity_id;
+    // Try to get friendly name from finish_actions (or start_actions for start-only timers)
+    const primaryActions = task.finish_actions?.length > 0 ? task.finish_actions : (task.start_actions || []);
+    if (primaryActions.length > 0) {
+      const rawTarget = primaryActions[0]?.target?.entity_id;
+      const firstTarget = Array.isArray(rawTarget) ? rawTarget[0] : rawTarget;
       if (firstTarget) {
         const friendlyName = this.hass?.states?.[firstTarget]?.attributes?.friendly_name || firstTarget;
         // If task_id is NOT the entity_id itself (card tasks), prefix with task_id info
@@ -1831,6 +1841,9 @@ class QuickTimerOverviewCard extends LitElement {
   _getTaskAction(task) {
     if (task.finish_actions?.length > 0) {
       return getServiceLabel(this.hass, task.finish_actions[0].service);
+    }
+    if (task.start_actions?.length > 0) {
+      return getServiceLabel(this.hass, task.start_actions[0].service);
     }
     return getServiceLabel(this.hass, task.service || task.action || '');
   }
@@ -1884,29 +1897,32 @@ class QuickTimerOverviewCard extends LitElement {
   }
 }
 
-customElements.define('quick-timer-overview-card', QuickTimerOverviewCard);
+if (!customElements.get('quick-timer-overview-card')) customElements.define('quick-timer-overview-card', QuickTimerOverviewCard);
 
 // ============================================
 // Card Registration
 // ============================================
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'quick-timer-card',
-  name: 'Quick Timer Card',
-  description: 'Professional timer card with multi-target actions, dynamic presets, and unique card IDs.',
-  preview: true,
-  configurable: true,
-  documentationURL: 'https://github.com/jozefnad/homeassistant-quick_timer',
-});
-window.customCards.push({
-  type: 'quick-timer-overview-card',
-  name: 'Quick Timer Overview',
-  description: 'Dashboard card showing all active scheduled tasks.',
-  preview: true,
-  configurable: true,
-  documentationURL: 'https://github.com/jozefnad/homeassistant-quick_timer',
-});
+const _qtCardRegistered = window.customCards.some((c) => c.type === 'quick-timer-card');
+if (!_qtCardRegistered) {
+  window.customCards.push({
+    type: 'quick-timer-card',
+    name: 'Quick Timer Card',
+    description: 'Professional timer card with multi-target actions, dynamic presets, and unique card IDs.',
+    preview: true,
+    configurable: true,
+    documentationURL: 'https://github.com/jozefnad/homeassistant-quick_timer',
+  });
+  window.customCards.push({
+    type: 'quick-timer-overview-card',
+    name: 'Quick Timer Overview',
+    description: 'Dashboard card showing all active scheduled tasks.',
+    preview: true,
+    configurable: true,
+    documentationURL: 'https://github.com/jozefnad/homeassistant-quick_timer',
+  });
+}
 
 console.info(
   `%c QUICK-TIMER %c v${CARD_VERSION} `,

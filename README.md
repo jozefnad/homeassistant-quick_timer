@@ -142,6 +142,9 @@ The visual editor handles everything — just add the card and configure through
 | `icon_tap_action` | object | `settings` | Icon tap behavior |
 | `notify_ha` | bool | `false` | HA persistent notification |
 | `notify_devices` | list | `[]` | Mobile device IDs for push notifications |
+| `revert` | string | `off` | Temporary mode: restore the previous state on `finish`, `cancel` or `both`. Works with start-only targets too |
+| `revert_entities` | list | | Entities to snapshot for revert (default: entities of the start targets) |
+| `sync_with_more_info` | bool | `true` | Single-entity cards share their timer with the entity's more-info dialog (task is keyed by `entity_id`). Set to `false` to keep the card's timer independent (keyed by `card_id`) |
 
 ### Target Object
 
@@ -387,13 +390,15 @@ No. The card is bundled and registers automatically. When you remove the integra
 <details>
 <summary><strong>Can I run multiple timers for the same entity?</strong></summary>
 
-Yes. Each card generates a unique `card_id` used as `task_id`. Multiple cards targeting the same entity have fully independent timers.
+Yes. Each card generates a unique `card_id`. By default (`sync_with_more_info: true`) a card with a single entity uses that `entity_id` as its `task_id`, so it shares one timer with the more-info dialog — and with any other synced card for the same entity. To give several cards on the same entity independent timers, set `sync_with_more_info: false` on them; they will then use their own `card_id`.
 </details>
 
 <details>
 <summary><strong>What happens after a Home Assistant restart?</strong></summary>
 
-All tasks are persisted. On startup, pending tasks are restored. Expired tasks execute immediately.
+All tasks are persisted. Once Home Assistant has fully started, pending tasks are restored and expired tasks are executed (including their revert). Reloading the integration keeps running timers as well.
+
+Actions run with the permissions of the user who started the timer, also when they fire later — so a non-admin user cannot use a timer to call admin-only services.
 </details>
 
 <details>

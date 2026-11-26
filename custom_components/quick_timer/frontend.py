@@ -12,13 +12,17 @@ _LOGGER = logging.getLogger(__name__)
 URL_BASE = "/quick_timer_static"
 FILENAME = "quick-timer-card.js"
 TRANSLATION_PATTERN = re.compile(r"^[a-z0-9-]+$")
+_VIEWS_REGISTERED_KEY = "quick_timer_views_registered"
 
 async def async_register_frontend(hass: HomeAssistant):
     """Register View and Lovelace resource."""
     
-    # Register View
-    hass.http.register_view(QuickTimerCardView())
-    hass.http.register_view(QuickTimerTranslationView())
+    # Register views only once per HA run (async_setup_entry runs again on
+    # every config entry reload).
+    if not hass.data.get(_VIEWS_REGISTERED_KEY):
+        hass.http.register_view(QuickTimerCardView())
+        hass.http.register_view(QuickTimerTranslationView())
+        hass.data[_VIEWS_REGISTERED_KEY] = True
 
     # Prepare URL with cache buster
     try:

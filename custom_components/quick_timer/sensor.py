@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -32,6 +31,11 @@ class QuickTimerSensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_name = SENSOR_NAME
     _attr_icon = "mdi:clock-outline"
+    # These attributes can grow large (all tasks + per-entity preferences and
+    # history) and change on every timer event; keep them out of the recorder.
+    _unrecorded_attributes = frozenset(
+        {"active_tasks", "preferences", "presets", "enable_dialog_injection"}
+    )
 
     def __init__(self, coordinator, config_entry) -> None:
         """Initialize the sensor."""
