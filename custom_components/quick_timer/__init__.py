@@ -76,6 +76,41 @@ PLATFORMS = ["sensor"]
 # Allow configuration via configuration.yaml (optional)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
+# Services that are admin-only in Home Assistant core (registered via
+# async_register_admin_service). They are gated on call.context.user_id, but
+# quick_timer invokes start/finish actions later from a timer callback with
+# no user context, which would bypass that admin check (CWE-441 confused
+# deputy). Block them from being targeted by quick_timer actions.
+_BLOCKED_ACTION_SERVICES = {
+    "homeassistant.restart",
+    "homeassistant.stop",
+    "hassio.host_reboot",
+    "hassio.host_shutdown",
+    "hassio.backup_full",
+    "hassio.backup_partial",
+    "hassio.restore_full",
+    "hassio.restore_partial",
+    "hassio.addon_start",
+    "hassio.addon_stop",
+    "hassio.addon_restart",
+    "hassio.addon_update",
+    "recorder.purge",
+    "recorder.purge_entities",
+}
+
+
+def _validate_action_services(actions: list) -> list:
+    """Reject actions whose 'service' targets an admin-only service."""
+    for action in actions:
+        service = action.get("service")
+        if service in _BLOCKED_ACTION_SERVICES:
+            raise vol.Invalid(
+                f"Action service '{service}' is admin-only and cannot be "
+                "run from quick_timer start/finish actions"
+            )
+    return actions
+
+
 # Service schemas
 RUN_ACTION_SCHEMA = vol.Schema(
     {
@@ -85,8 +120,8 @@ RUN_ACTION_SCHEMA = vol.Schema(
         ),
         vol.Optional(ATTR_UNIT, default=UNIT_MINUTES): vol.In([UNIT_SECONDS, UNIT_MINUTES, UNIT_HOURS]),
         vol.Optional(ATTR_TASK_LABEL): cv.string,  # Human-readable label for overview
-        vol.Optional(ATTR_START_ACTIONS): vol.All(cv.ensure_list, [dict]),  # Execute on start (optional)
-        vol.Optional(ATTR_FINISH_ACTIONS): vol.All(cv.ensure_list, [dict]),  # Execute on finish (required)
+        vol.Optional(ATTR_START_ACTIONS): vol.All(cv.ensure_list, [dict], _validate_action_services),  # Execute on start (optional)
+        vol.Optional(ATTR_FINISH_ACTIONS): vol.All(cv.ensure_list, [dict], _validate_action_services),  # Execute on finish (required)
         vol.Optional(ATTR_REVERT, default=REVERT_OFF): vol.In(
             [REVERT_OFF, REVERT_ON_FINISH, REVERT_ON_CANCEL, REVERT_BOTH]
         ),
